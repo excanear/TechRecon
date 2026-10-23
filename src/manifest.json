@@ -26,7 +26,7 @@
     "type": "module"
   },
   "permissions": ["activeTab", "scripting", "storage", "offscreen"],
-  "host_permissions": ["https://services.nvd.nist.gov/*", "https://api.osv.dev/*"],
+  "host_permissions": ["https://services.nvd.nist.gov/*", "https://api.osv.dev/*", "https://www.cisa.gov/*"],
   "optional_host_permissions": ["https://*/*", "http://*/*"],
   "commands": {
     "_execute_action": {

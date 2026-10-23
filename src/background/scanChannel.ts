@@ -2,12 +2,16 @@
 // apart from the per-tab analysis channel so the existing single-page flow is untouched.
 
 import { getAllByIndex } from '../db';
+import { correlateDetection } from '../cve/correlate';
+import { enrichVulns } from '../cve/enrich';
 import { getSignatureSet } from '../fingerprinting/registry';
+import { getSettings } from '../storage';
 import type { AggregatedTech } from '../crawler/aggregate';
 import type { AssetRecord, PageRecord } from '../crawler/types';
 import { runScan, type ScanRunHandle } from '../scan/runner';
 import { authorizeSession, createSession, deleteSession, listSessions, loadSession, saveSession } from '../scan/session';
-import type { ScanSession, ScopeConfig } from '../scan/types';
+import type { ScanSession, ScopeConfig, TechCveRecord, VulnFindingRecord } from '../scan/types';
+import { correlationContext, enrichmentContext } from './intel';
 import { offscreenFetch } from './offscreenBridge';
 import { closeOffscreen } from './offscreenBridge';
 
@@ -22,7 +26,15 @@ export type ScanRequest =
 export type ScanEvent =
   | { type: 'sessions'; sessions: ScanSession[] }
   | { type: 'session'; session: ScanSession }
-  | { type: 'inventory'; sessionId: string; technologies: AggregatedTech[]; pages: PageRecord[]; assets: AssetRecord[] }
+  | {
+      type: 'inventory';
+      sessionId: string;
+      technologies: AggregatedTech[];
+      pages: PageRecord[];
+      assets: AssetRecord[];
+      techCve: TechCveRecord[];
+      vulnerabilities: VulnFindingRecord[];
+    }
   | { type: 'error'; message: string };
 
 const subscribers = new Set<chrome.runtime.Port>();
@@ -43,12 +55,15 @@ async function sendSessions(port: chrome.runtime.Port): Promise<void> {
 }
 
 async function sendInventory(port: chrome.runtime.Port, sessionId: string): Promise<void> {
-  const [technologies, pages, assets] = await Promise.all([
+  const [technologies, pages, assets, techCve, vulnerabilities] = await Promise.all([
     getAllByIndex<AggregatedTech>('techFindings', 'sessionId', sessionId),
     getAllByIndex<PageRecord>('pages', 'sessionId', sessionId),
     getAllByIndex<AssetRecord>('assets', 'sessionId', sessionId),
+    getAllByIndex<TechCveRecord>('techCve', 'sessionId', sessionId),
+    getAllByIndex<VulnFindingRecord>('vulnFindings', 'sessionId', sessionId),
   ]);
-  port.postMessage({ type: 'inventory', sessionId, technologies, pages, assets } satisfies ScanEvent);
+  vulnerabilities.sort((a, b) => a.rank - b.rank);
+  port.postMessage({ type: 'inventory', sessionId, technologies, pages, assets, techCve, vulnerabilities } satisfies ScanEvent);
 }
 
 async function startSession(sessionId: string): Promise<void> {
@@ -58,11 +73,15 @@ async function startSession(sessionId: string): Promise<void> {
     broadcast({ type: 'error', message: 'Sessão não encontrada.' });
     return;
   }
-  const { signatures } = await getSignatureSet();
+  const [{ signatures }, settings] = await Promise.all([getSignatureSet(), getSettings()]);
   if (active.has(sessionId)) return;
+  const correlation = settings.cveLookup ? correlationContext(settings) : null;
   const handle = runScan(session, {
     fetcher: offscreenFetch,
     signatures,
+    cve: correlation
+      ? { correlate: (tech) => correlateDetection(tech, correlation), enrich: (vulns) => enrichVulns(vulns, enrichmentContext()) }
+      : undefined,
     onUpdate: (s) => broadcast({ type: 'session', session: s }),
   });
   active.set(sessionId, handle);

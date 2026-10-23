@@ -1,6 +1,25 @@
 // Data model for a scan session: an authorized, scoped crawl of a site.
 // Everything here is persisted in IndexedDB and never leaves the browser.
 
+import type { AffectedTech } from '../cve/enrich';
+import type { EnrichmentStatus, TechVulnReport, Vulnerability } from '../types';
+
+/** Correlation outcome for one inventory technology (vulnerabilities are stored deduped, by id). */
+export interface TechCveRecord extends Omit<TechVulnReport, 'vulns'> {
+  key: string;
+  sessionId: string;
+  vulnIds: string[];
+}
+
+/** One unique vulnerability of the site, enriched, with its priority rank (0 = most urgent). */
+export interface VulnFindingRecord {
+  key: string;
+  sessionId: string;
+  rank: number;
+  vuln: Vulnerability;
+  techs: AffectedTech[];
+}
+
 export interface HostMatcher {
   /** Exact host ("example.com") or wildcard suffix ("*.example.com" = apex + subdomains). */
   pattern: string;
@@ -45,7 +64,23 @@ export interface ScanCounters {
   errors: number;
   technologies: number;
   vulnerabilities: number;
+  /** Unique vulnerabilities listed in CISA KEV. */
+  exploited?: number;
   misconfigurations: number;
+}
+
+/** Vulnerability correlation over the aggregated inventory, after the crawl. */
+export interface ScanCveState {
+  status: 'disabled' | 'running' | 'done' | 'aborted';
+  /** Technologies in the inventory. */
+  total: number;
+  /** Technologies with a mapping and an exact observed version (the ones actually queried). */
+  eligible: number;
+  /** Eligible technologies already queried. */
+  done: number;
+  /** Technologies whose every source query failed. */
+  errors: number;
+  enrichment?: EnrichmentStatus;
 }
 
 export interface ScanSession {
@@ -59,6 +94,7 @@ export interface ScanSession {
   startedAt?: string;
   finishedAt?: string;
   error?: string;
+  cve?: ScanCveState;
 }
 
 export function emptyCounters(): ScanCounters {

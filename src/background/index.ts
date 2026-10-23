@@ -4,20 +4,20 @@
 import { buildSnapshot } from '../fingerprinting/snapshot';
 import { detectTechnologies, type CollectionPlan } from '../fingerprinting/engine';
 import { getSignatureSet } from '../fingerprinting/registry';
-import { correlateDetection, correlationPrecheck, createThrottles, nvdIntervalMs, type CorrelationContext } from '../cve/correlate';
+import { correlateDetection, correlationPrecheck } from '../cve/correlate';
+import { comparePriority, enrichVulns } from '../cve/enrich';
 import { headerProbe, mainWorldProbe, type HeaderProbeResult } from '../content/probes';
 import { buildRecon } from '../recon';
-import { ChromeQueryCache, deleteAnalysis, getSettings, loadAnalysis, saveAnalysis } from '../storage';
+import { deleteAnalysis, getSettings, loadAnalysis, saveAnalysis } from '../storage';
 import type { AnalysisState, BackgroundMessage, CollectedDom, HeaderProbe, PopupRequest, Settings, TechVulnReport } from '../types';
 import { checkUrlSupport } from './support';
 import { registerDatasetChannel } from './datasetChannel';
+import { cache, correlationContext, enrichmentContext } from './intel';
 import { registerScanChannel } from './scanChannel';
 
 registerScanChannel();
 registerDatasetChannel();
 
-const cache = new ChromeQueryCache();
-const throttles = createThrottles();
 const ports = new Map<number, Set<chrome.runtime.Port>>();
 const running = new Map<number, Promise<void>>();
 
@@ -95,18 +95,6 @@ async function collect(tabId: number, withHeaders: boolean, plan: CollectionPlan
   return { dom, main, probe, probeError, mainAvailable: main !== null };
 }
 
-function correlationContext(settings: Settings): CorrelationContext {
-  throttles.nvd.intervalMs = nvdIntervalMs(settings.nvdApiKey);
-  return {
-    fetch: (input, init) => fetch(input, init),
-    cache,
-    nvdApiKey: settings.nvdApiKey || undefined,
-    cacheTtlMs: settings.cacheTtlHours * 3600_000,
-    nvdThrottle: throttles.nvd,
-    osvThrottle: throttles.osv,
-  };
-}
-
 async function correlate(state: AnalysisState, settings: Settings, onlyIds?: Set<string>): Promise<void> {
   if (!settings.cveLookup) {
     for (const det of state.technologies) {
@@ -153,6 +141,13 @@ async function correlate(state: AnalysisState, settings: Settings, onlyIds?: Set
       await publish(state);
     }),
   );
+
+  // Exploitation intelligence over everything found on the page, then priority order.
+  const vulns = Object.values(state.vulnReports).flatMap((r) => r.vulns);
+  if (vulns.length) {
+    state.enrichment = await enrichVulns(vulns, enrichmentContext());
+    for (const r of Object.values(state.vulnReports)) r.vulns.sort(comparePriority);
+  }
 }
 
 async function updateBadge(state: AnalysisState): Promise<void> {

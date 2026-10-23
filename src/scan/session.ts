@@ -75,6 +75,8 @@ export async function deleteSession(id: string): Promise<void> {
     deleteByIndex('assets', 'sessionId', id),
     deleteByIndex('techFindings', 'sessionId', id),
     deleteByIndex('misconfigFindings', 'sessionId', id),
+    deleteByIndex('techCve', 'sessionId', id),
+    deleteByIndex('vulnFindings', 'sessionId', id),
   ]);
   await del('sessions', id);
 }

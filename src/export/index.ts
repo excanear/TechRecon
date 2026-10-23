@@ -1,3 +1,4 @@
+import { comparePriority, formatEpss, priorityTier, type PriorityTier } from '../cve/enrich';
 import { CATEGORY_LABELS } from '../fingerprinting/signature';
 import { redactUrl } from '../shared/redact';
 import type { AnalysisState, Confirmations, Severity, Vulnerability } from '../types';
@@ -30,35 +31,50 @@ export interface ExportedVulnerability {
   sourceUrl: string;
   references: Vulnerability['references'];
   published?: string;
+  /** Exploitation priority (KEV, then EPSS band). */
+  priority: PriorityTier;
+  /** null = checked and not listed; undefined = not checked (source unavailable). */
+  kev: Vulnerability['kev'];
+  epss: Vulnerability['epss'];
 }
 
+function exploitCell(v: ExportedVulnerability): string {
+  const parts: string[] = [];
+  if (v.kev) parts.push(v.kev.ransomware ? '**KEV** (ransomware)' : '**KEV**');
+  if (v.epss) parts.push(`EPSS ${formatEpss(v.epss.score)}`);
+  if (!parts.length) return v.kev === undefined || v.epss === undefined ? 'não verificado' : '—';
+  return parts.join(' · ');
+}
+
+/** Every vulnerability of the analysis, most urgent first (KEV → EPSS band → CVSS). */
 export function collectVulnerabilities(state: AnalysisState, confirmations: Confirmations): ExportedVulnerability[] {
-  const out: ExportedVulnerability[] = [];
-  for (const report of Object.values(state.vulnReports)) {
-    for (const v of report.vulns) {
-      const confirmation = confirmations[v.id];
-      out.push({
-        id: v.id,
-        aliases: v.aliases,
-        technology: report.techName,
-        technologyVersion: report.version,
-        status: confirmation ? 'confirmed-by-analyst' : 'potential',
-        confirmedAt: confirmation?.at,
-        severity: v.severity,
-        cvss: v.cvss,
-        title: v.title,
-        affected: v.affected,
-        fixedIn: v.fixedIn,
-        matchBasis: v.matchBasis,
-        conditions: v.conditions,
-        source: v.source === 'nvd' ? 'NVD (NIST)' : 'OSV (GitHub Advisory Database e outras)',
-        sourceUrl: v.sourceUrl,
-        references: v.references,
-        published: v.published,
-      });
-    }
-  }
-  return out.sort((a, b) => (b.cvss?.score ?? -1) - (a.cvss?.score ?? -1) || a.id.localeCompare(b.id));
+  const pairs = Object.values(state.vulnReports).flatMap((report) => report.vulns.map((v) => ({ report, v })));
+  pairs.sort((a, b) => comparePriority(a.v, b.v));
+  return pairs.map(({ report, v }) => {
+    const confirmation = confirmations[v.id];
+    return {
+      id: v.id,
+      aliases: v.aliases,
+      technology: report.techName,
+      technologyVersion: report.version,
+      status: confirmation ? 'confirmed-by-analyst' : 'potential',
+      confirmedAt: confirmation?.at,
+      severity: v.severity,
+      cvss: v.cvss,
+      title: v.title,
+      affected: v.affected,
+      fixedIn: v.fixedIn,
+      matchBasis: v.matchBasis,
+      conditions: v.conditions,
+      source: v.source === 'nvd' ? 'NVD (NIST)' : 'OSV (GitHub Advisory Database e outras)',
+      sourceUrl: v.sourceUrl,
+      references: v.references,
+      published: v.published,
+      priority: priorityTier(v),
+      kev: v.kev,
+      epss: v.epss,
+    };
+  });
 }
 
 export function buildJsonReport(state: AnalysisState, confirmations: Confirmations, meta: ExportMeta) {
@@ -82,8 +98,10 @@ export function buildJsonReport(state: AnalysisState, confirmations: Confirmatio
       observedTechnologies: state.technologies.filter((t) => !t.inferred).length,
       potentialVulnerabilities: vulnerabilities.filter((v) => v.status === 'potential').length,
       confirmedByAnalyst: vulnerabilities.filter((v) => v.status === 'confirmed-by-analyst').length,
+      knownExploited: new Set(vulnerabilities.filter((v) => v.kev).map((v) => v.id)).size,
       bySeverity,
     },
+    exploitationIntel: state.enrichment ?? null,
     technologies: state.technologies.map((t) => {
       const report = state.vulnReports[t.id];
       return {
@@ -174,10 +192,10 @@ export function toMarkdown(state: AnalysisState, confirmations: Confirmations, m
   if (!report.vulnerabilities.length) {
     lines.push('_Nenhuma vulnerabilidade correlacionada por versão._', '');
   } else {
-    lines.push('| ID | Status | Severidade | CVSS | Tecnologia | Afetadas | Corrigida em | Fonte |', '|---|---|---|---|---|---|---|---|');
+    lines.push('| ID | Status | Severidade | CVSS | Exploração | Tecnologia | Afetadas | Corrigida em | Fonte |', '|---|---|---|---|---|---|---|---|---|');
     for (const v of report.vulnerabilities) {
       lines.push(
-        `| ${mdLink(v.id, v.sourceUrl)} | ${v.status === 'confirmed-by-analyst' ? '**Confirmada (analista)**' : 'Potencial'} | ${v.severity} | ${v.cvss?.score ?? '—'}${v.cvss ? ` (v${mdCell(v.cvss.version)})` : ''} | ${mdCell(`${v.technology} ${v.technologyVersion ?? ''}`)} | ${mdCell(v.affected.join('; '))} | ${mdCell(v.fixedIn ?? 'não informado')} | ${mdCell(v.source)} |`,
+        `| ${mdLink(v.id, v.sourceUrl)} | ${v.status === 'confirmed-by-analyst' ? '**Confirmada (analista)**' : 'Potencial'} | ${v.severity} | ${v.cvss?.score ?? '—'}${v.cvss ? ` (v${mdCell(v.cvss.version)})` : ''} | ${exploitCell(v)} | ${mdCell(`${v.technology} ${v.technologyVersion ?? ''}`)} | ${mdCell(v.affected.join('; '))} | ${mdCell(v.fixedIn ?? 'não informado')} | ${mdCell(v.source)} |`,
       );
     }
     lines.push('');
@@ -187,6 +205,8 @@ export function toMarkdown(state: AnalysisState, confirmations: Confirmations, m
       if (v.cvss?.vector) lines.push(`- Vetor: \`${v.cvss.vector.replace(/`/g, "'")}\``);
       lines.push(`- Base da correspondência: ${mdCell(v.matchBasis)}`);
       if (v.conditions) lines.push(`- Condições: ${mdCell(v.conditions)}`);
+      if (v.kev) lines.push(`- CISA KEV: exploração ativa confirmada, incluída em ${v.kev.dateAdded}${v.kev.ransomware ? ', usada em ransomware' : ''}. Ação exigida: ${mdCell(v.kev.requiredAction)}`);
+      if (v.epss) lines.push(`- EPSS: ${formatEpss(v.epss.score)} em 30 dias (percentil ${Math.round(v.epss.percentile * 100)}, modelo de ${v.epss.date})`);
       lines.push(`- Fonte oficial: ${mdLink(v.sourceUrl, v.sourceUrl)}`);
       for (const r of v.references.slice(0, 6)) lines.push(`- Referência: ${mdLink(r.label, r.url)}`);
       lines.push('');

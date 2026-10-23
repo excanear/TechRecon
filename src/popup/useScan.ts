@@ -3,13 +3,16 @@ import type { AggregatedTech } from '../crawler/aggregate';
 import type { AssetRecord, PageRecord } from '../crawler/types';
 import { hasScopePermissions, requestScopePermissions } from '../scope/permissions';
 import { sanitizeScope, scopeFromSeeds } from '../scope/scope';
-import type { ScanSession, ScopeConfig } from '../scan/types';
+import type { ScanSession, ScopeConfig, TechCveRecord, VulnFindingRecord } from '../scan/types';
 import type { ScanEvent, ScanRequest } from '../background/scanChannel';
 
 export interface Inventory {
   technologies: AggregatedTech[];
   pages: PageRecord[];
   assets: AssetRecord[];
+  techCve: TechCveRecord[];
+  /** Unique vulnerabilities of the site, most urgent first. */
+  vulnerabilities: VulnFindingRecord[];
 }
 
 export function useScan() {
@@ -32,7 +35,7 @@ export function useScan() {
           return next;
         });
       } else if (event.type === 'inventory') {
-        setInventories((prev) => ({ ...prev, [event.sessionId]: { technologies: event.technologies, pages: event.pages, assets: event.assets } }));
+        setInventories((prev) => ({ ...prev, [event.sessionId]: { technologies: event.technologies, pages: event.pages, assets: event.assets, techCve: event.techCve, vulnerabilities: event.vulnerabilities } }));
       } else if (event.type === 'error') setError(event.message);
     });
     port.onDisconnect.addListener(() => {

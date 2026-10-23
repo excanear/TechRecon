@@ -117,7 +117,21 @@ cerca de 7.650 tecnologias (7.510 assinaturas comunitárias + as curadas).
 
 **Cache:** só respostas bem-sucedidas são guardadas (TTL configurável de 1 h a 7 dias, padrão 24 h, até 400 consultas). Falhas nunca são cacheadas nem convertidas em resultado vazio. A interface mostra o erro e oferece **Tentar novamente**.
 
-**O que é enviado para fora:** apenas `fornecedor:produto:versão` (NVD) ou `pacote@versão` (OSV). URL, HTML, cookies e headers da página nunca saem do navegador. A instalação opcional da base Wappalyzer faz GETs sem credenciais a `raw.githubusercontent.com`, sem enviar nada sobre os alvos.
+### Inteligência de exploração e prioridade
+
+| Fonte | Uso | Observações |
+|---|---|---|
+| [CISA KEV](https://www.cisa.gov/known-exploited-vulnerabilities-catalog) | CVEs com exploração ativa confirmada | Catálogo oficial inteiro (~1,8 MB) baixado de `www.cisa.gov`, reduzido aos campos exibidos e guardado no IndexedDB por 24 h. Consultas são locais. Se a atualização falhar, uma cópia anterior só é usada **com aviso** e a versão do catálogo; sem cópia, o KEV aparece como "não verificado". |
+| [FIRST EPSS](https://www.first.org/epss/) | Probabilidade de exploração em 30 dias | Consulta em lote (até 100 CVEs por requisição). CVE sem score publicado aparece como "sem score", nunca como 0%. Percentuais são truncados, nunca arredondados para cima. |
+
+Cada vulnerabilidade distingue três estados por fonte: **listada/pontuada**, **verificada sem
+registro** e **não verificada** (fonte indisponível). Uma falha nunca vira "não listada".
+
+**Prioridade:** 1) CISA KEV; 2) faixa EPSS alta (≥ 10%) e média (≥ 1%); 3) CVSS e severidade;
+4) score EPSS exato. A faixa de EPSS vem antes do CVSS porque diferenças pequenas de EPSS são
+ruído, mas uma CVE realmente provável de ser explorada não deve ficar abaixo de um 9,8 teórico.
+
+**O que é enviado para fora:** apenas `fornecedor:produto:versão` (NVD), `pacote@versão` (OSV) e IDs de CVE (EPSS). URL, HTML, cookies e headers da página nunca saem do navegador. A instalação opcional da base Wappalyzer faz GETs sem credenciais a `raw.githubusercontent.com`, sem enviar nada sobre os alvos.
 
 ### Potencial × confirmada
 
@@ -146,7 +160,17 @@ logout/signout, delete/remove, `?action=`, `?_wpnonce`/`token`, downloads e `mai
 nunca submete formulários; nunca repete uma URL; respeita rate limit por host e concorrência;
 os limites são *clampados* a faixas seguras. Uma sessão não inicia sem autorização registrada.
 
-Sessões e inventário ficam em **IndexedDB**, no perfil do navegador.
+**CVE em escala:** terminado o crawl, cada tecnologia do inventário agregado é correlacionada
+**uma vez para o site inteiro** (não uma por página), com o mesmo cache e os mesmos limites de
+taxa da análise de página. Só entram tecnologias com mapeamento e versão exata observada; as
+demais ficam registradas com o motivo. As vulnerabilidades são **deduplicadas entre
+tecnologias** (a mesma CVE via dois produtos, ou um advisory e sua CVE, aparece uma vez, com
+todas as tecnologias afetadas), enriquecidas com KEV + EPSS e ordenadas por prioridade. Falhas
+de consulta aparecem por tecnologia; nada é presumido. Interromper a varredura nessa fase
+mantém o que já foi consultado e marca o resultado como parcial. Com "Consultar
+vulnerabilidades" desligado, o scan não faz nenhuma consulta.
+
+Sessões, inventário e vulnerabilidades ficam em **IndexedDB**, no perfil do navegador.
 
 ## Permissões
 
@@ -156,7 +180,7 @@ Sessões e inventário ficam em **IndexedDB**, no perfil do navegador.
 | `scripting` | Injetar o coletor e as sondas sob demanda, sem content script permanente |
 | `storage` | Opções, cache de CVEs, confirmações e resultado da última análise por aba (session) |
 | `offscreen` | Documento offscreen que faz fetch + parse das páginas durante a varredura |
-| `host_permissions`: `services.nvd.nist.gov`, `api.osv.dev` | Consultar as APIs de vulnerabilidade a partir do service worker (CORS) |
+| `host_permissions`: `services.nvd.nist.gov`, `api.osv.dev`, `www.cisa.gov` | Consultar as APIs de vulnerabilidade e baixar o catálogo KEV a partir do service worker (o feed da CISA não envia CORS). O EPSS (`api.first.org`) envia CORS aberto e não precisa de permissão. |
 | `optional_host_permissions`: `http(s)://*/*` | **Não concedida por padrão.** Pedida em runtime, só para os domínios do escopo, no início de cada varredura. |
 
 Não há `tabs`, `webRequest`, `cookies` nem content scripts declarados. O acesso amplo a hosts é

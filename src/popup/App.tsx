@@ -169,6 +169,7 @@ export function App() {
               onRetry={retryCve}
               busy={busy}
               lookupEnabled={state.cveLookupEnabled}
+              enrichment={state.enrichment}
             />
           )}
           {tab === 'recon' && state.recon && <ReconPanel recon={state.recon} onCaptureHeaders={captureHeaders} busy={busy} />}

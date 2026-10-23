@@ -202,3 +202,24 @@
   font-size: var(--fs-xs);
   color: var(--muted);
 }
+
+.vulns {
+  margin: 4px 0 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--line);
+}
+
+.vulns h4 {
+  margin: 6px 0 4px;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+
+.vulns h4 span {
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.kev {
+  color: var(--sev-critical);
+}

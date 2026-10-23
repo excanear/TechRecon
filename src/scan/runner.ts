@@ -1,6 +1,6 @@
 // Drives a scan session: crawls the scope, aggregates technologies site-wide, persists pages,
-// assets and the inventory to IndexedDB, and reports progress. CVE correlation and misconfig
-// checks are added in later phases; this runner produces the inventory they will consume.
+// assets and the inventory to IndexedDB, and reports progress. Once the crawl ends, the
+// inventory is correlated with vulnerability sources (cvePhase.ts). Misconfig checks come later.
 
 import { TechAggregator } from '../crawler/aggregate';
 import { crawl, type CrawlDeps } from '../crawler/crawler';
@@ -9,6 +9,7 @@ import { put } from '../db';
 import { siteOf } from '../recon';
 import { HostRateLimiter } from '../scope/limits';
 import type { Detection } from '../types';
+import { runCvePhase, type CveDeps } from './cvePhase';
 import { assertRunnable, saveSession } from './session';
 import { emptyCounters, type ScanSession } from './types';
 
@@ -22,6 +23,8 @@ export interface ScanRunnerDeps {
   fetcher: CrawlDeps['fetcher'];
   signatures?: CrawlDeps['signatures'];
   onUpdate: (session: ScanSession) => void;
+  /** Vulnerability correlation after the crawl; absent when CVE lookup is disabled. */
+  cve?: CveDeps;
   now?: () => number;
 }
 
@@ -108,7 +111,21 @@ export function runScan(session: ScanSession, deps: ScanRunnerDeps): ScanRunHand
       }
 
       session.counters.technologies = inventory.length;
-      session.status = summary.aborted ? 'aborted' : 'done';
+
+      if (summary.aborted) {
+        // Nothing more to do: the operator stopped the scan.
+      } else if (deps.cve) {
+        await runCvePhase(session, inventory, deps.cve, {
+          shouldContinue: () => !aborted,
+          onUpdate: () => {
+            void saveSession(session).catch(() => undefined);
+            deps.onUpdate(session);
+          },
+        });
+      } else {
+        session.cve = { status: 'disabled', total: inventory.length, eligible: 0, done: 0, errors: 0 };
+      }
+      session.status = summary.aborted || session.cve?.status === 'aborted' ? 'aborted' : 'done';
       session.finishedAt = new Date().toISOString();
     } catch (err) {
       session.status = 'error';

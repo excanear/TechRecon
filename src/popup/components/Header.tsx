@@ -81,6 +81,7 @@ export function Summary({ state, confirmedCount }: { state: AnalysisState; confi
   }
   const observed = state.technologies.filter((t) => !t.inferred).length;
   const highest = STRIP_ORDER.find((s) => counts[s]);
+  const exploited = new Set(vulns.filter((v) => v.kev).map((v) => v.id)).size;
   return (
     <section className={styles.summary} aria-label="Resumo">
       <div className={styles.counter}>
@@ -96,7 +97,15 @@ export function Summary({ state, confirmedCount }: { state: AnalysisState; confi
         </span>
         <span className={styles.countLabel}>
           CVEs potenciais
-          <small>{confirmedCount ? plural(confirmedCount, 'confirmada', 'confirmadas') : 'por versão'}</small>
+          <small>
+            {exploited ? (
+              <span style={{ color: 'var(--sev-critical)', fontWeight: 600 }}>{exploited} no CISA KEV</span>
+            ) : confirmedCount ? (
+              plural(confirmedCount, 'confirmada', 'confirmadas')
+            ) : (
+              'por versão'
+            )}
+          </small>
         </span>
       </div>
       <div className={styles.strip} role="img" aria-label={vulns.length ? STRIP_ORDER.filter((s) => counts[s]).map((s) => `${counts[s]} ${SEVERITY_LABEL[s]}`).join(', ') : 'Nenhuma vulnerabilidade correlacionada'}>

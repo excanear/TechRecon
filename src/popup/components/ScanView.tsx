@@ -2,14 +2,17 @@ import { ArrowLeft, CircleStop, Globe2, Loader2, Play, Trash2 } from 'lucide-rea
 import { useMemo, useState } from 'react';
 import { CATEGORY_LABELS } from '../../fingerprinting/signature';
 import type { ScanSession } from '../../scan/types';
+import { SEVERITY_LABEL, SEVERITY_VAR } from '../format';
 import { useScan, type Inventory } from '../useScan';
+import { EnrichmentNote, ExploitBadges, PRIORITY_HELP } from './Exploit';
 import styles from './ScanView.module.css';
 import ui from './ui.module.css';
 
 const RUNNING = new Set(['running', 'authorized']);
 
-function statusLabel(s: ScanSession['status']): string {
-  return { draft: 'rascunho', authorized: 'autorizado', running: 'varrendo', paused: 'pausado', done: 'concluído', aborted: 'interrompido', error: 'erro' }[s];
+function statusLabel(session: ScanSession): string {
+  if (session.status === 'running' && session.cve?.status === 'running') return `correlacionando CVEs ${session.cve.done}/${session.cve.eligible}`;
+  return { draft: 'rascunho', authorized: 'autorizado', running: 'varrendo', paused: 'pausado', done: 'concluído', aborted: 'interrompido', error: 'erro' }[session.status];
 }
 
 function NewScan({ onStart, defaultSeed, error }: { onStart: ReturnType<typeof useScan>['startScan']; defaultSeed: string; error: string | null }) {
@@ -85,7 +88,12 @@ function SessionCard({ session, inventory, onOpen, onAbort, onDelete, open }: {
   open: boolean;
 }) {
   const running = session.status === 'running';
-  const pct = session.scope.maxPages ? Math.min(100, Math.round((session.counters.fetched / session.scope.maxPages) * 100)) : 0;
+  const cve = session.cve?.status === 'running' ? session.cve : null;
+  const pct = cve
+    ? Math.round((cve.done / Math.max(1, cve.eligible)) * 100)
+    : session.scope.maxPages
+      ? Math.min(100, Math.round((session.counters.fetched / session.scope.maxPages) * 100))
+      : 0;
   return (
     <div className={styles.card}>
       <button type="button" className={styles.cardHead} onClick={onOpen} aria-expanded={open}>
@@ -93,7 +101,9 @@ function SessionCard({ session, inventory, onOpen, onAbort, onDelete, open }: {
         <span className={styles.cardTitle}>
           {session.label}
           <small>
-            {statusLabel(session.status)} · {session.counters.fetched} págs · {session.counters.technologies} techs
+            {statusLabel(session)} · {session.counters.fetched} págs · {session.counters.technologies} techs
+            {session.cve && session.cve.status !== 'disabled' && session.cve.status !== 'running' ? ` · ${session.counters.vulnerabilities} CVEs` : ''}
+            {session.counters.exploited ? <strong className={styles.kev}> · {session.counters.exploited} KEV</strong> : null}
           </small>
         </span>
         {running ? <Loader2 size={14} className={styles.spin} /> : null}
@@ -115,23 +125,82 @@ function SessionCard({ session, inventory, onOpen, onAbort, onDelete, open }: {
         )}
         {session.error && <span className={styles.error}>{session.error}</span>}
       </div>
-      {open && inventory && <InventoryView inventory={inventory} />}
+      {open && inventory && <InventoryView inventory={inventory} session={session} />}
     </div>
   );
 }
 
-function InventoryView({ inventory }: { inventory: Inventory }) {
+const VULN_LIMIT = 40;
+
+function ScanVulns({ inventory, session }: { inventory: Inventory; session: ScanSession }) {
+  const cve = session.cve;
+  if (!cve) return null;
+  if (cve.status === 'disabled') {
+    return <p className={styles.invMeta}>Correlação de CVEs desativada nas opções; o inventário não foi consultado.</p>;
+  }
+  const by = (status: string) => inventory.techCve.filter((r) => r.status === status);
+  const failed = by('error');
+  const partial = inventory.techCve.filter((r) => r.status === 'ok' && r.message);
+  const skipped = by('no-version').length + by('version-uncertain').length;
+  const unmapped = by('unmapped').length;
+  const list = inventory.vulnerabilities;
+  return (
+    <section className={styles.vulns} aria-label="Vulnerabilidades do site">
+      <h4>
+        Vulnerabilidades priorizadas <span>{list.length}</span>
+      </h4>
+      <p className={styles.invMeta}>
+        {cve.status === 'running' ? `Consultando ${cve.done}/${cve.eligible}… ` : ''}
+        {cve.eligible} de {cve.total} tecnologias com versão exata consultadas
+        {skipped ? ` · ${skipped} sem versão exata` : ''}
+        {unmapped ? ` · ${unmapped} sem fonte de CVE` : ''}
+        {cve.status === 'aborted' ? ' · interrompida (resultado parcial)' : ''}
+      </p>
+      {(failed.length > 0 || partial.length > 0) && (
+        <p className={styles.error} role="alert">
+          Consultas com falha (nenhum resultado presumido): {[...failed, ...partial].map((r) => `${r.techName} ${r.version ?? ''}`.trim()).join(', ')}
+        </p>
+      )}
+      <EnrichmentNote status={cve.enrichment} />
+      {list.length > 1 && <p className={styles.invMeta}>{PRIORITY_HELP}</p>}
+      <ul className={styles.invList} aria-label="Vulnerabilidades priorizadas">
+        {list.slice(0, VULN_LIMIT).map(({ vuln, techs }) => (
+          <li key={vuln.id}>
+            <span className={styles.invName}>
+              <span className="mono">{vuln.id}</span>
+              <span className={`${styles.invVer} mono`} style={{ color: SEVERITY_VAR[vuln.severity] }}>
+                {vuln.cvss?.score != null ? vuln.cvss.score.toFixed(1) : SEVERITY_LABEL[vuln.severity]}
+              </span>
+              <ExploitBadges vuln={vuln} />
+            </span>
+            <span className={styles.invCat}>
+              {techs.map((t) => `${t.name} ${t.version ?? ''}`.trim()).join(', ')}
+              {vuln.fixedIn ? ` · corrigida em ${vuln.fixedIn}` : ''}
+            </span>
+          </li>
+        ))}
+      </ul>
+      {list.length > VULN_LIMIT && <p className={styles.invMeta}>+{list.length - VULN_LIMIT} de menor prioridade não exibidas aqui.</p>}
+      {list.length === 0 && cve.status === 'done' && !failed.length && (
+        <p className={styles.invMeta}>Nenhuma vulnerabilidade cuja faixa afetada contenha uma versão observada.</p>
+      )}
+    </section>
+  );
+}
+
+function InventoryView({ inventory, session }: { inventory: Inventory; session: ScanSession }) {
   const observed = inventory.technologies.filter((t) => !t.inferred);
   return (
     <div className={styles.inventory}>
       <p className={styles.invMeta}>
         {inventory.pages.length} páginas varridas · {observed.length} tecnologias observadas · {inventory.assets.filter((a) => a.thirdParty).length} hosts de terceiros
       </p>
-      <ul className={styles.invList}>
+      <ScanVulns inventory={inventory} session={session} />
+      <ul className={styles.invList} aria-label="Tecnologias do site">
         {inventory.technologies.slice(0, 60).map((t) => (
           <li key={t.id}>
             <span className={styles.invName}>
-              {t.name}
+              <span>{t.name}</span>
               {t.version && <span className={`${styles.invVer} mono`}>{t.version}</span>}
               {t.inferred && <span className={ui.chip}>inferida</span>}
               {t.source === 'wappalyzer' && (

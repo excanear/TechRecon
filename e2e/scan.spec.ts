@@ -40,15 +40,17 @@ test('crawls a whole site, aggregates technologies and never follows destructive
   await popup.getByRole('button', { name: /Autorizar e iniciar/ }).click();
 
   // The crawl finishes: the session card shows "concluído".
+  // Crawl, then the CVE phase over the inventory (live NVD/OSV, throttled), then "concluído".
+  test.setTimeout(300_000);
   const card = popup.locator('text=concluído').first();
-  await expect(card).toBeVisible({ timeout: 60_000 });
+  await expect(card).toBeVisible({ timeout: 240_000 });
 
   // Open the inventory.
   await popup.getByRole('button', { name: /varrendo|concluído/ }).first().click();
-  const panel = popup.getByRole('tabpanel').or(popup.locator('body'));
-  await expect(panel.getByText('WordPress')).toBeVisible();
-  await expect(panel.getByText('jQuery')).toBeVisible();
-  await expect(panel.getByText('Nginx')).toBeVisible();
+  const techs = popup.getByRole('list', { name: 'Tecnologias do site' });
+  await expect(techs.getByText('WordPress', { exact: true })).toBeVisible();
+  await expect(techs.getByText('jQuery', { exact: true })).toBeVisible();
+  await expect(techs.getByText('Nginx', { exact: true })).toBeVisible();
 
   // It visited several linked pages but NEVER /logout.
   const fetchedPaths = site.requests.filter((r) => r.startsWith('GET ')).map((r) => r.slice(4).split('?')[0]);
@@ -60,4 +62,14 @@ test('crawls a whole site, aggregates technologies and never follows destructive
 
   // Inventory reports a page count greater than one (whole-site aggregation).
   await expect(popup.getByText(/páginas varridas/)).toBeVisible();
+
+  // Site-wide CVE correlation: deduped, enriched with KEV/EPSS, KEV first.
+  const vulns = popup.getByRole('region', { name: 'Vulnerabilidades do site' });
+  await expect(vulns).toContainText('Vulnerabilidades priorizadas');
+  if (await vulns.getByRole('alert').count()) console.warn('Live queries failed:', await vulns.getByRole('alert').innerText());
+  await expect(vulns.getByText('CVE-2020-11023')).toBeVisible();
+  await expect(vulns.locator('li').first()).toContainText('KEV');
+  await expect(popup.getByText(/· \d+ KEV/)).toBeVisible();
+  await vulns.scrollIntoViewIfNeeded();
+  await vulns.screenshot({ path: 'test-results/popup-scan-vulns.png' });
 });
