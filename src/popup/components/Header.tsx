@@ -1,4 +1,4 @@
-import { RefreshCw, Settings as SettingsIcon } from 'lucide-react';
+import { RefreshCw, Radar, Settings as SettingsIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { SEVERITY_RANK } from '../../cve/cvss';
 import type { AnalysisState, Severity } from '../../types';
@@ -11,6 +11,7 @@ interface HeaderProps {
   busy: boolean;
   onRefresh: () => void;
   onSettings: () => void;
+  onScan: () => void;
   exportMenu: ReactNode;
 }
 
@@ -34,7 +35,7 @@ function statusText(state: AnalysisState | null): string {
   }
 }
 
-export function Header({ state, busy, onRefresh, onSettings, exportMenu }: HeaderProps) {
+export function Header({ state, busy, onRefresh, onSettings, onScan, exportMenu }: HeaderProps) {
   return (
     <header className={styles.header}>
       <div className={styles.top}>
@@ -48,6 +49,9 @@ export function Header({ state, busy, onRefresh, onSettings, exportMenu }: Heade
         <div className={styles.actions}>
           <button type="button" className={styles.iconButton} onClick={onRefresh} disabled={busy || !state} title="Analisar novamente" aria-label="Analisar novamente">
             <RefreshCw size={15} className={busy ? styles.spin : undefined} />
+          </button>
+          <button type="button" className={styles.iconButton} onClick={onScan} title="Varredura do site" aria-label="Varredura do site">
+            <Radar size={15} />
           </button>
           {exportMenu}
           <button type="button" className={styles.iconButton} onClick={onSettings} title="Opções" aria-label="Opções">

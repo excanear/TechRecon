@@ -9,6 +9,9 @@ import { buildRecon } from '../recon';
 import { ChromeQueryCache, deleteAnalysis, getSettings, loadAnalysis, saveAnalysis } from '../storage';
 import type { AnalysisState, BackgroundMessage, CollectedDom, HeaderProbe, PopupRequest, Settings, TechVulnReport } from '../types';
 import { checkUrlSupport } from './support';
+import { registerScanChannel } from './scanChannel';
+
+registerScanChannel();
 
 const plan = buildCollectionPlan();
 const cache = new ChromeQueryCache();

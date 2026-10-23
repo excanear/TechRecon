@@ -103,6 +103,29 @@ Tipos de regra: `html`, `scriptSrc`, `script` (inline), `stylesheet`, `meta`, `h
 - **Confirmada:** marcação manual do analista após verificação, salva por domínio e incluída nas exportações.
 - Tecnologias sem versão, com versão imprecisa (ex.: `Drupal 10`), com versões conflitantes ou apenas inferidas **não são correlacionadas**. A aba Vulnerabilidades mostra essa cobertura.
 
+## Varredura do site (crawling autorizado)
+
+Além da análise passiva de uma aba, o ícone **Varredura do site** (radar) abre o modo de
+reconhecimento de **site inteiro**:
+
+- Você define a **URL inicial**, uma **declaração de autorização obrigatória**, o teto de
+  páginas, a profundidade, a taxa (req/s) e se inclui subdomínios.
+- Ao iniciar, a extensão pede **permissão de acesso aos domínios do escopo** (concedida sob
+  demanda; o acesso amplo fica em `optional_host_permissions`, não no `host_permissions`).
+- O crawler percorre o site **na sua sessão logada** (`fetch` com `credentials: 'include'`),
+  então alcança áreas autenticadas. Cada página é lida num **offscreen document** (único lugar
+  da extensão com `fetch` + `DOMParser`), e o fingerprint é **agregado por todo o site**.
+- Como o crawl usa `fetch`, ele obtém os **headers de resposta de cada página** — algo que a
+  análise passiva de uma aba não tem. Em troca, não executa JavaScript, então detecções que
+  dependem de variáveis globais em runtime só aparecem na análise da aba ativa.
+
+**Guard-rails (no código, testados):** só segue links **GET idempotentes**; recusa
+logout/signout, delete/remove, `?action=`, `?_wpnonce`/`token`, downloads e `mailto:`/`tel:`;
+nunca submete formulários; nunca repete uma URL; respeita rate limit por host e concorrência;
+os limites são *clampados* a faixas seguras. Uma sessão não inicia sem autorização registrada.
+
+Sessões e inventário ficam em **IndexedDB**, no perfil do navegador.
+
 ## Permissões
 
 | Permissão | Motivo |
@@ -110,9 +133,12 @@ Tipos de regra: `html`, `scriptSrc`, `script` (inline), `stylesheet`, `meta`, `h
 | `activeTab` | Acesso temporário apenas à aba em que você clicou no ícone. Sem acesso a outras abas nem ao histórico. |
 | `scripting` | Injetar o coletor e as sondas sob demanda, sem content script permanente |
 | `storage` | Opções, cache de CVEs, confirmações e resultado da última análise por aba (session) |
+| `offscreen` | Documento offscreen que faz fetch + parse das páginas durante a varredura |
 | `host_permissions`: `services.nvd.nist.gov`, `api.osv.dev` | Consultar as APIs de vulnerabilidade a partir do service worker (CORS) |
+| `optional_host_permissions`: `http(s)://*/*` | **Não concedida por padrão.** Pedida em runtime, só para os domínios do escopo, no início de cada varredura. |
 
-Não há `tabs`, `webRequest`, `cookies`, `<all_urls>` nem content scripts declarados.
+Não há `tabs`, `webRequest`, `cookies` nem content scripts declarados. O acesso amplo a hosts é
+opcional e só é concedido quando você autoriza uma varredura.
 
 ## Limitações conhecidas
 
