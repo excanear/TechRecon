@@ -46,7 +46,7 @@ popup (lançador + progresso)      dashboard (aba cheia: inventário, mapa, matr
 |---|---|
 | **1. Scope & Auth** | Modelo de escopo + matcher, gate de autorização, rate limiter por host + concorrência, classificador de links idempotentes, ScanSession em IndexedDB |
 | **2. Crawler** | BFS no escopo reusando `collector.ts`, mapa do site, discovery por CT logs (crt.sh), UI de novo scan + progresso |
-| **3. Fingerprint força máxima** | Ingestão Wappalyzer + agregação site-wide + extração de versão ampliada |
+| **3. Fingerprint força máxima** | Ingestão Wappalyzer **por download em runtime** (GPL-3.0 não vai no bundle MIT; commit + SHA-256 fixados), curadas com precedência, proveniência `source`, `requires`/`requiresCategory`, versões condicionais |
 | **4. CVE em escala** | Fila sobre o inventário, enriquecimento EPSS + CISA KEV, dedupe, ranking CVSS→KEV→EPSS |
 | **5. Misconfig passivo** | Headers, cookies, CORS, conteúdo misto, SRI, segredos expostos, arquivos sensíveis — só observável/GET idempotente |
 | **6. Dashboard + export** | Aba cheia interativa + export JSON/MD/CSV/HTML |

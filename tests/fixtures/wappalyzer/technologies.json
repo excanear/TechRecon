@@ -1,0 +1,383 @@
+{
+  "WordPress": {
+    "cats": [
+      1,
+      11
+    ],
+    "cpe": "cpe:2.3:a:wordpress:wordpress:*:*:*:*:*:*:*:*",
+    "description": "WordPress is a free and open-source content management system written in PHP and paired with a MySQL or MariaDB database. Features include a plugin architecture and a template system.",
+    "dom": [
+      "div[class*='wp-block-group'] > div[class*='wp-block-']",
+      "link[rel=stylesheet][href*='/wp-content/']",
+      "link[rel=stylesheet][href*='/wp-includes/']",
+      "link[href*='.wp.com']"
+    ],
+    "headers": {
+      "X-Pingback": "/xmlrpc\\.php$",
+      "link": "rel=\"https://api\\.w\\.org/\""
+    },
+    "html": [
+      "<link rel=[\"']stylesheet[\"'] [^>]+/wp-(?:content|includes)/",
+      "<link[^>]+s\\d+\\.wp\\.com"
+    ],
+    "icon": "WordPress.svg",
+    "implies": [
+      "PHP",
+      "MySQL"
+    ],
+    "js": {
+      "wp.ajax": "",
+      "wp.receiveEmbedMessage": "",
+      "wp_username": "",
+      "wpb_prepare_tab_content": ""
+    },
+    "meta": {
+      "generator": "^WordPress(?: ([\\d.]+))?\\;version:\\1",
+      "shareaholic:wp_version": ""
+    },
+    "oss": true,
+    "pricing": [
+      "low",
+      "recurring",
+      "freemium"
+    ],
+    "saas": true,
+    "scriptSrc": [
+      "/wp-(?:content|includes)/",
+      "wp-embed\\.min\\.js",
+      "wp-static\\.assets\\.sh/"
+    ],
+    "website": "https://wordpress.org"
+  },
+  "Elementor": {
+    "cats": [
+      51,
+      87
+    ],
+    "cookies": {
+      "elementor_pro_login": ""
+    },
+    "description": "Elementor is a website builder platform for professionals on WordPress.",
+    "dom": [
+      "link[href*='/wp-content/plugins/elementor/']"
+    ],
+    "icon": "Elementor.svg",
+    "js": {
+      "ElementorProFrontendConfig": "",
+      "ElementsKit_Helper.ajaxLoading": "",
+      "elementorFrontend.getElements": "",
+      "elementorFrontendConfig.version": "([\\d\\.]+)\\;version:\\1",
+      "elementorModules": "",
+      "elementorProFrontend": ""
+    },
+    "meta": {
+      "generator": "^Elementor\\s([\\d\\.]+)\\;version:\\1"
+    },
+    "pricing": [
+      "freemium",
+      "onetime",
+      "recurring"
+    ],
+    "requires": [
+      "WordPress"
+    ],
+    "saas": true,
+    "scriptSrc": [
+      "/wp-content/plugins/elementor(?:-pro)?/.+frontend-modules\\.min\\.js(?:\\?ver=(\\d+(?:\\.\\d+)+))?\\;version:\\1"
+    ],
+    "website": "https://elementor.com"
+  },
+  "Yoast SEO": {
+    "cats": [
+      54,
+      87
+    ],
+    "description": "Yoast SEO is a search engine optimisation plugin for WordPress and other platforms.",
+    "dom": [
+      "script[class*='yoast-schema-graph']"
+    ],
+    "html": [
+      "<!-- This site is optimized with the Yoast (?:WordPress )?SEO plugin v([^\\s]+) -\\;version:\\1",
+      "<!-- This site is optimized with the Yoast SEO Premium plugin v(?:[^\\s]+) \\(Yoast SEO v([^\\s]+)\\) -\\;version:\\1"
+    ],
+    "icon": "Yoast SEO.png",
+    "implies": [
+      "WordPress"
+    ],
+    "oss": true,
+    "website": "https://yoast.com/wordpress/plugins/seo/"
+  },
+  "Angular": {
+    "cats": [
+      12
+    ],
+    "cpe": "cpe:2.3:a:angular:angular:*:*:*:*:*:*:*:*",
+    "description": "Angular is a TypeScript-based open-source web application framework led by the Angular Team at Google.",
+    "dom": {
+      "[ng-version]": {
+        "attributes": {
+          "ng-version": "^([\\d\\.]+)\\;version:\\1"
+        }
+      }
+    },
+    "excludes": [
+      "AngularDart",
+      "AngularJS"
+    ],
+    "icon": "Angular.svg",
+    "implies": [
+      "TypeScript"
+    ],
+    "js": {
+      "getAllAngularRootElements": "",
+      "getAngularTestability": "",
+      "ng.coreTokens": "",
+      "ng.probe": ""
+    },
+    "oss": true,
+    "website": "https://angular.io"
+  },
+  "AngularJS": {
+    "cats": [
+      12
+    ],
+    "cpe": "cpe:2.3:a:angularjs:angular.js:*:*:*:*:*:*:*:*",
+    "description": "AngularJS is a JavaScript-based open-source web application framework led by the Angular Team at Google.",
+    "excludes": [
+      "Angular",
+      "AngularDart"
+    ],
+    "html": [
+      "<(?:div|html)[^>]+ng-app=",
+      "<ng-app"
+    ],
+    "icon": "AngularJS.svg",
+    "js": {
+      "angular": "",
+      "angular.version.full": "^(.+)$\\;version:\\1"
+    },
+    "scriptSrc": [
+      "angular[.-]([\\d.]*\\d)[^/]*\\.js\\;version:\\1",
+      "/([\\d.]+(?:-?rc[.\\d]*)*)/angular(?:\\.min)?\\.js\\;version:\\1",
+      "(?!angular\\.io)\\bangular.{0,32}\\.js"
+    ],
+    "website": "https://angularjs.org"
+  },
+  "AngularDart": {
+    "cats": [
+      18
+    ],
+    "excludes": [
+      "Angular",
+      "AngularJS"
+    ],
+    "icon": "AngularDart.svg",
+    "implies": [
+      "Dart"
+    ],
+    "js": {
+      "ngTestabilityRegistries": ""
+    },
+    "website": "https://webdev.dartlang.org/angular/"
+  },
+  "TypeScript": {
+    "cats": [
+      27
+    ],
+    "description": "TypeScript is an open-source language which builds on JavaScript  by adding static type definitions.",
+    "icon": "TypeScript.svg",
+    "oss": true,
+    "website": "https://www.typescriptlang.org"
+  },
+  "Nuxt.js": {
+    "cats": [
+      12,
+      18,
+      57
+    ],
+    "cpe": "cpe:2.3:a:nuxt:nuxt:*:*:*:*:*:*:*:*",
+    "description": "Nuxt is a Vue framework for developing modern web applications.",
+    "dom": [
+      "div[id^='__nuxt']"
+    ],
+    "html": [
+      "<div [^>]*id=\"__nuxt\"",
+      "<script [^>]*>window\\.__NUXT__"
+    ],
+    "icon": "Nuxt.js.svg",
+    "implies": [
+      "Vue.js"
+    ],
+    "js": {
+      "$nuxt": "",
+      "__NUXT__": "",
+      "useNuxtApp": ""
+    },
+    "scriptSrc": [
+      "/_nuxt/"
+    ],
+    "website": "https://nuxt.com"
+  },
+  "Vue.js": {
+    "cats": [
+      12
+    ],
+    "css": [
+      "\\.vue-notification-group"
+    ],
+    "description": "Vue.js is an open-source model–view–viewmodel JavaScript framework for building user interfaces and single-page applications.",
+    "dom": [
+      ".vue-app",
+      "link[href*='docsify/themes/vue.css']",
+      "meta[data-vue-meta]",
+      "div[class*='vue-scroll-picker-group'] > div[class*='vue-scroll-picker']",
+      "div[class*='Vue-Toastification__container']"
+    ],
+    "html": [
+      "<(?!svg)[^>]+\\sdata-v(?:ue)?-"
+    ],
+    "icon": "vue.svg",
+    "js": {
+      "Vue": "",
+      "Vue.version": "^(.+)$\\;version:\\1",
+      "VueRoot": "",
+      "__VUE_HOT_MAP__": "",
+      "__VUE__": "",
+      "vueDLL": ""
+    },
+    "scriptSrc": [
+      "vue[.-]([\\d.]*\\d)[^/]*\\.js\\;version:\\1",
+      "(?:/([\\d.]+))?/vue(?:\\.min)?\\.js\\;version:\\1"
+    ],
+    "website": "https://vuejs.org"
+  },
+  "Google Analytics": {
+    "cats": [
+      10
+    ],
+    "cookies": {
+      "__utma": "",
+      "_ga": "",
+      "_ga_*": "\\;version:GA4",
+      "_gat": "\\;version:UA"
+    },
+    "description": "Google Analytics is a free web analytics service that tracks and reports website traffic.",
+    "dom": [
+      "amp-analytics[type*=googleanalytics]"
+    ],
+    "icon": "Google Analytics.svg",
+    "js": {
+      "GoogleAnalyticsObject": "",
+      "gaGlobal": ""
+    },
+    "scriptSrc": [
+      "google-analytics\\.com/(?:ga|urchin|analytics)\\.js",
+      "googletagmanager\\.com/gtag/js"
+    ],
+    "scripts": [
+      "gtag\\([^)]+'(UA-)\\;version:\\1?UA:",
+      "gtag\\([^)]+'(G-)\\;version:\\1?GA4:"
+    ],
+    "website": "https://google.com/analytics"
+  },
+  "PHP": {
+    "cats": [
+      27
+    ],
+    "cookies": {
+      "PHPSESSID": ""
+    },
+    "cpe": "cpe:2.3:a:php:php:*:*:*:*:*:*:*:*",
+    "description": "PHP is a general-purpose scripting language used for web development.",
+    "dom": [
+      "form[action*='login_process.php'], form[action*='assets/mail.php']"
+    ],
+    "headers": {
+      "Server": "php/?([\\d.]+)?\\;version:\\1",
+      "X-Powered-By": "^php/?([\\d.]+)?\\;version:\\1"
+    },
+    "icon": "PHP.svg",
+    "scripts": [
+      "\\.php(?:\\?|$)"
+    ],
+    "url": [
+      "\\.php(?:$|\\?)"
+    ],
+    "website": "https://php.net"
+  },
+  "MySQL": {
+    "cats": [
+      34
+    ],
+    "cpe": "cpe:2.3:a:mysql:mysql:*:*:*:*:*:*:*:*",
+    "description": "MySQL is an open-source relational database management system.",
+    "icon": "MySQL.svg",
+    "website": "https://mysql.com"
+  },
+  "Afterpay": {
+    "cats": [
+      41,
+      91
+    ],
+    "cpe": "cpe:2.3:a:afterpay:afterpay:*:*:*:*:*:*:*:*",
+    "description": "Afterpay is a 'buy now, pay later' platform that makes it possible to pay off purchased goods in fortnightly instalments.",
+    "dom": [
+      "#afterpay, .afterpay, .AfterpayMessage, [aria-label='Afterpay'], link[href*='/wp-content/plugins/afterpay-gateway-for-woocommerce/']"
+    ],
+    "icon": "afterpay.svg",
+    "js": {
+      "AfterPay": "",
+      "Afterpay": "",
+      "Afterpay.version": "([\\d\\.]+)\\;version:\\1",
+      "AfterpayAttractWidget": "",
+      "AfterpayGenericErrorHtml": "",
+      "AfterpayWidgetHtml": "",
+      "afterpay_product": "",
+      "checkout.enabledpayments.afterpay": "^true$"
+    },
+    "requiresCategory": [
+      6
+    ],
+    "saas": true,
+    "scriptSrc": [
+      "portal\\.afterpay\\.com",
+      "static\\.afterpay\\.com",
+      "present-afterpay\\.js",
+      "afterpay-products\\.min\\.js",
+      "js\\.stripe\\.com/v3/fingerprinted/js/elements-afterpay-clearpay-message-.+\\.js"
+    ],
+    "scripts": [
+      "AFTERPAY"
+    ],
+    "website": "https://www.afterpay.com/"
+  },
+  "Ant Design": {
+    "cats": [
+      66
+    ],
+    "description": "Ant Design is a UI library that can be used with data flow solutions and application frameworks in any React ecosystem.",
+    "dom": {
+      "div[class*='ant-collapse']": {
+        "attributes": {
+          "class": "ant-collapse"
+        }
+      },
+      "link[href*='antd']": {
+        "attributes": {
+          "href": "antd(?:@|/)?([\\d\\.]+)?(?:.+|)?\\.css\\;version:\\1"
+        }
+      }
+    },
+    "html": [
+      "<[^>]*class=\"ant-(?:btn|col|row|layout|breadcrumb|menu|pagination|steps|select|cascader|checkbox|calendar|form|input-number|input|mention|rate|radio|slider|switch|tree-select|time-picker|transfer|upload|avatar|badge|card|carousel|collapse|list|popover|tooltip|table|tabs|tag|timeline|tree|alert|modal|message|notification|progress|popconfirm|spin|anchor|back-top|divider|drawer)",
+      "<i class=\"anticon anticon-"
+    ],
+    "icon": "Ant Design.svg",
+    "js": {
+      "__ANTD_STYLE_CACHE_MANAGER_FOR_SSR__": "",
+      "antd.version": "^([\\d\\.]+)$\\;version:\\1"
+    },
+    "oss": true,
+    "website": "https://ant.design"
+  }
+}

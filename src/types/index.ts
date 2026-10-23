@@ -116,7 +116,15 @@ export type CategoryId =
   | 'monitoring'
   | 'build-tool'
   | 'cache'
-  | 'consent';
+  | 'consent'
+  | 'cms-extension'
+  | 'database'
+  | 'os'
+  | 'marketing'
+  | 'other';
+
+/** Where a signature comes from: hand-curated in this repo, or the community Wappalyzer dataset. */
+export type SignatureSource = 'curated' | 'wappalyzer';
 
 export type EvidenceType =
   | 'html'
@@ -168,6 +176,8 @@ export interface Detection {
   distroPackage?: string;
   cpe?: string[];
   npm?: string;
+  /** Provenance of the signature that produced this detection. Absent = curated. */
+  source?: SignatureSource;
 }
 
 // ───────────────────────── Vulnerabilities ─────────────────────────

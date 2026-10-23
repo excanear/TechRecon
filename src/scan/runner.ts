@@ -20,6 +20,7 @@ export interface ScanRunHandle {
 
 export interface ScanRunnerDeps {
   fetcher: CrawlDeps['fetcher'];
+  signatures?: CrawlDeps['signatures'];
   onUpdate: (session: ScanSession) => void;
   now?: () => number;
 }
@@ -92,7 +93,7 @@ export function runScan(session: ScanSession, deps: ScanRunnerDeps): ScanRunHand
       const rateLimiter = new HostRateLimiter(session.scope.requestsPerSecond);
       const summary = await crawl(
         session.scope,
-        { fetcher: deps.fetcher, rateLimiter },
+        { fetcher: deps.fetcher, rateLimiter, signatures: deps.signatures },
         { onPage, shouldContinue: () => !aborted },
       );
 

@@ -102,6 +102,7 @@ export function buildJsonReport(state: AnalysisState, confirmations: Confirmatio
         cpe: t.cpe ?? [],
         npm: t.npm ?? null,
         website: t.website ?? null,
+        source: t.source ?? 'curated',
         vulnerabilityCorrelation: report
           ? { status: report.status, message: report.message ?? null, queries: report.queries, matches: report.vulns.map((v) => v.id) }
           : null,
@@ -153,7 +154,7 @@ export function toMarkdown(state: AnalysisState, confirmations: Confirmations, m
       const corr = t.vulnerabilityCorrelation;
       const cves = !corr ? '—' : corr.status === 'ok' ? String(corr.matches.length) : corr.status;
       lines.push(
-        `| ${mdCell(t.name)}${t.inferred ? ' _(inferida)_' : ''} | ${mdCell(t.categories.map((c) => CATEGORY_LABELS[c]).join(', '))} | ${mdCell(t.version ?? '—')}${t.version && !t.versionExact ? ' (imprecisa)' : ''} | ${t.confidence}% (${t.confidenceLevel}) | ${mdCell(methods)} | ${mdCell(cves)} |`,
+        `| ${mdCell(t.name)}${t.inferred ? ' _(inferida)_' : ''}${t.source === 'wappalyzer' ? ' _(Wappalyzer)_' : ''} | ${mdCell(t.categories.map((c) => CATEGORY_LABELS[c]).join(', '))} | ${mdCell(t.version ?? '—')}${t.version && !t.versionExact ? ' (imprecisa)' : ''} | ${t.confidence}% (${t.confidenceLevel}) | ${mdCell(methods)} | ${mdCell(cves)} |`,
       );
     }
     lines.push('');

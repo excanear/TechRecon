@@ -21,6 +21,10 @@ import {
   Tags,
   Type,
   Wrench,
+  Puzzle,
+  Cpu,
+  Megaphone,
+  Shapes,
   type LucideIcon,
 } from 'lucide-react';
 import type { CategoryId } from '../../types';
@@ -48,6 +52,11 @@ export const CATEGORY_ICON: Record<CategoryId, LucideIcon> = {
   'build-tool': Wrench,
   cache: Database,
   consent: Cookie,
+  'cms-extension': Puzzle,
+  database: Database,
+  os: Cpu,
+  marketing: Megaphone,
+  other: Shapes,
 };
 
 /** TechRecon mark: a reticle. Same drawing as the toolbar icon. */

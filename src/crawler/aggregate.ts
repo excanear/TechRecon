@@ -22,6 +22,7 @@ export interface AggregatedTech {
   cpe?: string[];
   npm?: string;
   distroPackage?: string;
+  source?: Detection['source'];
   /** Number of crawled pages this technology was detected on. */
   pageCount: number;
   /** A few example page URLs (capped). */
@@ -58,6 +59,7 @@ export class TechAggregator {
           evidence: dedupeEvidence(det.evidence),
           notes: [...det.notes],
           cpe: det.cpe,
+          source: det.source,
           npm: det.npm,
           distroPackage: det.distroPackage,
           pageCount: 1,

@@ -59,6 +59,10 @@ interface Hit {
 
 function applyVersionTemplate(template: string | undefined, match: RegExpExecArray): string | undefined {
   if (!template) return undefined;
+  // Conditional form "$1?a:b": "a" when group 1 captured something, otherwise "b".
+  const ternary = /^\$(\d)\?([^:]*):(.*)$/.exec(template);
+  if (ternary) template = match[Number(ternary[1])] ? ternary[2]! : ternary[3]!;
+  if (!template) return undefined;
   const filled = template.replace(/\$(\d)/g, (_, n: string) => match[Number(n)] ?? '');
   // A template whose capture group was empty (e.g. "0.$1" with no match) yields no version.
   if (/\$\d/.test(template) && template.replace(/\$\d/g, '') === filled) return undefined;
@@ -93,17 +97,26 @@ function testRules(type: EvidenceType, rules: Rule[] | undefined, candidates: Ca
 
 const DISTRO = /\b(ubuntu|debian|centos|red ?hat|rhel|el[6-9]|fedora|suse|amzn|amazon linux|alpine|deb\d+u\d+)\b/i;
 
-function matchSignature(sig: Signature, page: PageSnapshot, scriptUrls: string[], styleUrls: string[]): Hit[][] {
+/** Candidate lists shared by every signature for one snapshot (built once, not per signature). */
+interface PageCandidates {
+  html: Candidate[];
+  script: Candidate[];
+  scriptSrc: Candidate[];
+  stylesheet: Candidate[];
+  url: Candidate[];
+  resource: Candidate[];
+}
+
+function matchSignature(sig: Signature, page: PageSnapshot, c: PageCandidates): Hit[][] {
   const hits: Hit[][] = [];
   const { rules } = sig;
-  const urls = (list: string[]): Candidate[] => list.map((value) => ({ value, isUrl: true }));
 
-  if (rules.html && page.html) testRules('html', rules.html, [{ value: page.html }], hits);
-  if (rules.script && page.inlineScripts) testRules('script', rules.script, [{ value: page.inlineScripts }], hits);
-  testRules('scriptSrc', rules.scriptSrc, urls(scriptUrls), hits);
-  testRules('stylesheet', rules.stylesheet, urls(styleUrls), hits);
-  testRules('url', rules.url, urls([page.url]), hits);
-  testRules('resource', rules.resource, urls(page.resources.map((r) => r.url)), hits);
+  testRules('html', rules.html, c.html, hits);
+  testRules('script', rules.script, c.script, hits);
+  testRules('scriptSrc', rules.scriptSrc, c.scriptSrc, hits);
+  testRules('stylesheet', rules.stylesheet, c.stylesheet, hits);
+  testRules('url', rules.url, c.url, hits);
+  testRules('resource', rules.resource, c.resource, hits);
 
   for (const [name, list] of Object.entries(rules.meta ?? {})) {
     const values = page.meta[name] ?? [];
@@ -209,6 +222,7 @@ function buildDetection(sig: Signature, hits: Hit[][]): Detection | null {
     distroPackage,
     cpe: sig.cpe,
     npm: sig.npm,
+    source: sig.source,
   };
 }
 
@@ -233,10 +247,19 @@ export function detectTechnologies(page: PageSnapshot, signatures: Signature[] =
     ...page.stylesheets,
     ...page.resources.filter((r) => r.initiatorType === 'link' || r.initiatorType === 'css').map((r) => r.url).filter((u) => /\.css(?:[?#]|$)|\/css2?\?|fonts\.googleapis/.test(u)),
   ]);
+  const urls = (list: string[]): Candidate[] => list.map((value) => ({ value, isUrl: true }));
+  const candidates: PageCandidates = {
+    html: page.html ? [{ value: page.html }] : [],
+    script: page.inlineScripts ? [{ value: page.inlineScripts }] : [],
+    scriptSrc: urls(scriptUrls),
+    stylesheet: urls(styleUrls),
+    url: urls([page.url]),
+    resource: urls(page.resources.map((r) => r.url)),
+  };
 
   const detected = new Map<string, Detection>();
   for (const sig of signatures) {
-    const hits = matchSignature(sig, page, scriptUrls, styleUrls);
+    const hits = matchSignature(sig, page, candidates);
     if (!hits.length) continue;
     const det = buildDetection(sig, hits);
     if (det) detected.set(sig.id, det);
@@ -249,6 +272,24 @@ export function detectTechnologies(page: PageSnapshot, signatures: Signature[] =
       if (!other) continue;
       const own = new Set(det.evidence.map(evidenceKey));
       if (other.evidence.every((e) => own.has(evidenceKey(e)))) detected.delete(exId);
+    }
+  }
+
+  // Requirements: a technology that only makes sense on top of another (a WordPress plugin, a
+  // Shopify app) is dropped when nothing it requires is present. Repeated until stable, since
+  // dropping one detection can leave another without its requirement.
+  for (let changed = true; changed; ) {
+    changed = false;
+    const present = withImplied(detected.keys(), byId);
+    const presentCategories = new Set([...present].flatMap((id) => byId.get(id)?.categories ?? []));
+    for (const det of [...detected.values()]) {
+      const sig = byId.get(det.id)!;
+      const missingTech = sig.requires?.length && !sig.requires.some((id) => present.has(id));
+      const missingCategory = sig.requiresCategories?.length && !sig.requiresCategories.some((c) => presentCategories.has(c));
+      if (missingTech || missingCategory) {
+        detected.delete(det.id);
+        changed = true;
+      }
     }
   }
 
@@ -288,6 +329,7 @@ export function detectTechnologies(page: PageSnapshot, signatures: Signature[] =
         notes: childSig.note ? [childSig.note] : [],
         cpe: childSig.cpe,
         npm: childSig.npm,
+        source: childSig.source,
       };
       detected.set(childId, child);
       queue.push(child);
@@ -299,4 +341,19 @@ export function detectTechnologies(page: PageSnapshot, signatures: Signature[] =
 
 function unique(list: string[]): string[] {
   return [...new Set(list)];
+}
+
+/** The given ids plus everything they transitively imply. */
+function withImplied(ids: Iterable<string>, byId: Map<string, Signature>): Set<string> {
+  const present = new Set(ids);
+  const queue = [...present];
+  while (queue.length) {
+    for (const child of byId.get(queue.shift()!)?.implies ?? []) {
+      if (byId.has(child) && !present.has(child)) {
+        present.add(child);
+        queue.push(child);
+      }
+    }
+  }
+  return present;
 }

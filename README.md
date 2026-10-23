@@ -51,7 +51,7 @@ popup (React) ──port──▶ service worker ──executeScript──▶ p�
 
 | Pasta | Conteúdo |
 |---|---|
-| `src/fingerprinting/` | Formato de assinatura (`signature.ts`), motor (`engine.ts`), seleção de versão, 140 assinaturas em `signatures/` |
+| `src/fingerprinting/` | Formato de assinatura (`signature.ts`), motor (`engine.ts`), seleção de versão, 140 assinaturas em `signatures/`, conjunto ativo (`registry.ts`) e conversor/download da base Wappalyzer (`wappalyzer/`) |
 | `src/cve/` | Comparação de versões, parser de CPE e avaliação de configurações NVD, cliente NVD, cliente OSV, calculadora CVSS v3, throttle/retry HTTP, correlação |
 | `src/content/` | Coletor injetado sob demanda e sondas serializadas (MAIN world, headers) |
 | `src/background/` | Service worker: coordenação, streaming de progresso, badge, páginas não suportadas |
@@ -82,7 +82,29 @@ Edite o arquivo adequado em `src/fingerprinting/signatures/`:
 }
 ```
 
-Tipos de regra: `html`, `scriptSrc`, `script` (inline), `stylesheet`, `meta`, `headers`, `cookies` (por nome), `globals` (caminho pontuado; `prefixo*` para chaves dinâmicas), `dom` (seletor, atributo, texto ou expando no MAIN world), `url` e `resource`. Cada regra tem confiança de 0 a 100, e a confiança da tecnologia é a soma por regra, limitada a 100. Uma regra com confiança 0 (`versionOnly`) só fornece versão e nunca detecta sozinha. `implies` gera tecnologias **inferidas**, sem versão e marcadas como não observadas. `excludes` remove outra detecção apenas quando toda a evidência dela também está explicada por esta. `tests/signatures.test.ts` valida automaticamente todas as assinaturas.
+Tipos de regra: `html`, `scriptSrc`, `script` (inline), `stylesheet`, `meta`, `headers`, `cookies` (por nome), `globals` (caminho pontuado; `prefixo*` para chaves dinâmicas), `dom` (seletor, atributo, texto ou expando no MAIN world), `url` e `resource`. Cada regra tem confiança de 0 a 100, e a confiança da tecnologia é a soma por regra, limitada a 100. Uma regra com confiança 0 (`versionOnly`) só fornece versão e nunca detecta sozinha. `implies` gera tecnologias **inferidas**, sem versão e marcadas como não observadas. `excludes` remove outra detecção apenas quando toda a evidência dela também está explicada por esta. `requires`/`requiresCategories` descartam a detecção quando nada do que ela exige está presente (detectado ou inferido). `tests/signatures.test.ts` valida automaticamente todas as assinaturas.
+
+### Base comunitária Wappalyzer (opcional)
+
+Em **Opções → Base de assinaturas Wappalyzer**, a extensão baixa o dataset
+[enthec/webappanalyzer](https://github.com/enthec/webappanalyzer) e amplia a detecção de 140 para
+cerca de 7.650 tecnologias (7.510 assinaturas comunitárias + as curadas).
+
+- **Licença:** o dataset é **GPL-3.0** e, por isso, **não acompanha** a extensão (MIT). Ele só é
+  baixado quando você pede e fica apenas neste navegador (IndexedDB). Remover a base restaura o conjunto curado.
+- **Integridade:** os 27 arquivos vêm de um commit fixado (`WAPPALYZER_COMMIT`) e cada um é
+  conferido contra um SHA-256 fixado no código. Qualquer divergência, falha HTTP ou JSON inválido
+  aborta a instalação sem gravar nada.
+- **Precedência:** as assinaturas curadas sempre vencem. As 137 entradas do dataset que duplicam
+  uma tecnologia curada são descartadas, e as referências a elas (`implies`, `requires`,
+  `excludes`) passam a apontar para a curada.
+- **Proveniência e confiança:** detecções da base aparecem com o selo **WA**, com a fonte no detalhe
+  e `source` no JSON/Markdown exportado. Cada regra comunitária contribui com 80% da confiança declarada.
+- **Conversão** (`src/fingerprinting/wappalyzer/convert.ts`): `html`, `scriptSrc`, `scripts`
+  (inline), `meta`, `headers`, `cookies` (só o nome), `js` (globais), `dom` (presença, atributo,
+  texto e propriedade), `url` e `xhr` (recursos). Versões `\1` e condicionais `\1?a:b` são
+  preservadas. `dns`, `certIssuer`, `robots`, `css` e `probe` não são observáveis aqui; as cerca de
+  200 tecnologias que só têm essas regras entram apenas por inferência.
 
 ## Fontes de dados
 
@@ -95,7 +117,7 @@ Tipos de regra: `html`, `scriptSrc`, `script` (inline), `stylesheet`, `meta`, `h
 
 **Cache:** só respostas bem-sucedidas são guardadas (TTL configurável de 1 h a 7 dias, padrão 24 h, até 400 consultas). Falhas nunca são cacheadas nem convertidas em resultado vazio. A interface mostra o erro e oferece **Tentar novamente**.
 
-**O que é enviado para fora:** apenas `fornecedor:produto:versão` (NVD) ou `pacote@versão` (OSV). URL, HTML, cookies e headers da página nunca saem do navegador.
+**O que é enviado para fora:** apenas `fornecedor:produto:versão` (NVD) ou `pacote@versão` (OSV). URL, HTML, cookies e headers da página nunca saem do navegador. A instalação opcional da base Wappalyzer faz GETs sem credenciais a `raw.githubusercontent.com`, sem enviar nada sobre os alvos.
 
 ### Potencial × confirmada
 

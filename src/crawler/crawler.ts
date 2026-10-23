@@ -4,6 +4,7 @@
 // a browser. The crawler NEVER fetches a URL that is out of scope or not a crawlable GET link.
 
 import { detectTechnologies } from '../fingerprinting/engine';
+import type { Signature } from '../fingerprinting/signature';
 import { HostRateLimiter } from '../scope/limits';
 import { decideScope, normalizeUrl } from '../scope/scope';
 import type { ScopeConfig } from '../scan/types';
@@ -34,6 +35,8 @@ export interface CrawlDeps {
   fetcher: PageFetcher;
   /** Injectable for tests. */
   rateLimiter?: HostRateLimiter;
+  /** Signature set to fingerprint pages with. Defaults to the curated set. */
+  signatures?: Signature[];
 }
 
 /**
@@ -96,7 +99,7 @@ export async function crawl(scope: ScopeConfig, deps: CrawlDeps, callbacks: Craw
       if (page.error) errors++;
       if (page.skippedReason) skipped++;
 
-      const detections = page.skippedReason ? [] : detectTechnologies(page.snapshot);
+      const detections = page.skippedReason ? [] : detectTechnologies(page.snapshot, deps.signatures);
       await callbacks.onPage(page, depth, detections);
       callbacks.onProgress?.({ fetched, queued: nextFrontier.size, skipped, errors, currentDepth: depth, lastUrl: page.finalUrl });
 

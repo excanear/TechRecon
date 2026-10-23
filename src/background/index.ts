@@ -2,18 +2,20 @@
 // streams progress to the popup over a port and keeps the last result in session storage.
 
 import { buildSnapshot } from '../fingerprinting/snapshot';
-import { buildCollectionPlan, detectTechnologies } from '../fingerprinting/engine';
+import { detectTechnologies, type CollectionPlan } from '../fingerprinting/engine';
+import { getSignatureSet } from '../fingerprinting/registry';
 import { correlateDetection, correlationPrecheck, createThrottles, nvdIntervalMs, type CorrelationContext } from '../cve/correlate';
 import { headerProbe, mainWorldProbe, type HeaderProbeResult } from '../content/probes';
 import { buildRecon } from '../recon';
 import { ChromeQueryCache, deleteAnalysis, getSettings, loadAnalysis, saveAnalysis } from '../storage';
 import type { AnalysisState, BackgroundMessage, CollectedDom, HeaderProbe, PopupRequest, Settings, TechVulnReport } from '../types';
 import { checkUrlSupport } from './support';
+import { registerDatasetChannel } from './datasetChannel';
 import { registerScanChannel } from './scanChannel';
 
 registerScanChannel();
+registerDatasetChannel();
 
-const plan = buildCollectionPlan();
 const cache = new ChromeQueryCache();
 const throttles = createThrottles();
 const ports = new Map<number, Set<chrome.runtime.Port>>();
@@ -55,7 +57,7 @@ function baseState(tabId: number, url: string, settings: Settings): AnalysisStat
   };
 }
 
-async function collect(tabId: number, withHeaders: boolean) {
+async function collect(tabId: number, withHeaders: boolean, plan: CollectionPlan) {
   await chrome.scripting.executeScript({ target: { tabId }, files: ['content.js'] });
   const [domResult] = await chrome.scripting.executeScript({
     target: { tabId },
@@ -170,11 +172,12 @@ async function analyze(tabId: number, url: string, probeHeaders: boolean | undef
   await publish(state);
   try {
     const withHeaders = probeHeaders ?? settings.autoHeaderProbe;
-    const { dom, main, probe, probeError, mainAvailable } = await collect(tabId, withHeaders);
+    const { signatures, plan } = await getSignatureSet();
+    const { dom, main, probe, probeError, mainAvailable } = await collect(tabId, withHeaders, plan);
     // Use the URL actually observed in the frame (it may differ after client-side navigation).
     state.url = dom.url;
     state.domain = new URL(dom.url).hostname;
-    state.technologies = detectTechnologies(buildSnapshot(dom, main, probe));
+    state.technologies = detectTechnologies(buildSnapshot(dom, main, probe), signatures);
     state.recon = buildRecon(dom, probe);
     if (!mainAvailable) state.recon.notes.unshift('Variáveis globais da página não puderam ser lidas; detecções por versão em JavaScript ficam limitadas.');
     if (probeError) state.recon.notes.unshift(`Captura de headers falhou: ${probeError}`);

@@ -3,7 +3,7 @@
 // stays in the browser profile.
 
 export const DB_NAME = 'techrecon';
-export const DB_VERSION = 1;
+export const DB_VERSION = 2;
 
 export interface StoreSpec {
   name: string;
@@ -18,6 +18,8 @@ export const STORES: StoreSpec[] = [
   { name: 'assets', keyPath: 'key', indexes: [{ name: 'sessionId', keyPath: 'sessionId' }] },
   { name: 'techFindings', keyPath: 'key', indexes: [{ name: 'sessionId', keyPath: 'sessionId' }] },
   { name: 'misconfigFindings', keyPath: 'key', indexes: [{ name: 'sessionId', keyPath: 'sessionId' }] },
+  // Optional, downloaded signature datasets (Wappalyzer). Never bundled with the extension.
+  { name: 'datasets', keyPath: 'id' },
 ];
 
 let dbPromise: Promise<IDBDatabase> | null = null;

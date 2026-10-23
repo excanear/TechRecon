@@ -134,6 +134,11 @@ function InventoryView({ inventory }: { inventory: Inventory }) {
               {t.name}
               {t.version && <span className={`${styles.invVer} mono`}>{t.version}</span>}
               {t.inferred && <span className={ui.chip}>inferida</span>}
+              {t.source === 'wappalyzer' && (
+                <span className={ui.chip} title="Detectada pela base comunitária Wappalyzer">
+                  WA
+                </span>
+              )}
             </span>
             <span className={styles.invCat}>
               {t.categories.map((c) => CATEGORY_LABELS[c]).join(', ')} · {t.pageCount} pág.

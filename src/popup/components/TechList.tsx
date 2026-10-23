@@ -65,6 +65,8 @@ function TechDetail({ det, report, onShowVulns }: { det: Detection; report?: Tec
             <dd>{det.impliedBy.join(', ')}</dd>
           </>
         ) : null}
+        <dt>Fonte</dt>
+        <dd>{det.source === 'wappalyzer' ? 'Base comunitária Wappalyzer (GPL-3.0)' : 'Assinatura curada TechRecon'}</dd>
         <dt>CVEs</dt>
         <dd>
           <CveLine report={report} onShow={onShowVulns} />
@@ -198,6 +200,11 @@ export function TechList({ technologies, reports, onShowVulns, headerHint, onCap
                           </span>
                         )}
                         {report?.status === 'pending' && <span className={ui.chip}>consultando</span>}
+                        {t.source === 'wappalyzer' && (
+                          <span className={ui.chip} title="Detectada pela base comunitária Wappalyzer">
+                            WA
+                          </span>
+                        )}
                         <span className={ui.confidence} data-level={t.confidenceLevel} title={`Confiança ${CONFIDENCE_LABEL[t.confidenceLevel].toLowerCase()} (${t.confidence}%)`} />
                       </span>
                       <ChevronRight size={12} className={ui.chevron} aria-hidden="true" />

@@ -2,6 +2,7 @@
 // apart from the per-tab analysis channel so the existing single-page flow is untouched.
 
 import { getAllByIndex } from '../db';
+import { getSignatureSet } from '../fingerprinting/registry';
 import type { AggregatedTech } from '../crawler/aggregate';
 import type { AssetRecord, PageRecord } from '../crawler/types';
 import { runScan, type ScanRunHandle } from '../scan/runner';
@@ -57,8 +58,11 @@ async function startSession(sessionId: string): Promise<void> {
     broadcast({ type: 'error', message: 'Sessão não encontrada.' });
     return;
   }
+  const { signatures } = await getSignatureSet();
+  if (active.has(sessionId)) return;
   const handle = runScan(session, {
     fetcher: offscreenFetch,
+    signatures,
     onUpdate: (s) => broadcast({ type: 'session', session: s }),
   });
   active.set(sessionId, handle);
