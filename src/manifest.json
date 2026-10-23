@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "TechRecon",
   "short_name": "TechRecon",
-  "description": "Passive technology fingerprinting and CVE intelligence for ethical pentesters.",
+  "description": "Technology fingerprinting, CVE intelligence (KEV/EPSS) and authorized whole-site reconnaissance for ethical pentesters.",
   "version": "0.0.0",
   "minimum_chrome_version": "116",
   "action": {
