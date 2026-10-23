@@ -3,6 +3,7 @@
 [![CI](https://github.com/excanear/TechRecon/actions/workflows/ci.yml/badge.svg)](https://github.com/excanear/TechRecon/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/excanear/TechRecon)](https://github.com/excanear/TechRecon/releases/latest)
 [![Licença: MIT](https://img.shields.io/badge/licen%C3%A7a-MIT-blue)](LICENSE)
+[![Documentação](https://img.shields.io/badge/documenta%C3%A7%C3%A3o-TechRecon--Docs-1a1a1a?logo=github)](https://github.com/excanear/TechRecon-Docs)
 
 Extensão Chrome (Manifest V3) de **reconhecimento de aplicações web** para pentesters éticos.
 Identifica as tecnologias de um site, com versão, confiança e evidência, cruza as versões com
@@ -28,6 +29,14 @@ Princípios aplicados no código, não só neste texto:
    da fonte oficial.
 
 O roadmap que levou a esta versão está em [`docs/PLAN.md`](docs/PLAN.md).
+
+> [!TIP]
+> A **documentação técnica completa**, em 13 capítulos, fica num repositório próprio:
+> [**TechRecon-Docs**](https://github.com/excanear/TechRecon-Docs). Lá estão a
+> [arquitetura](https://github.com/excanear/TechRecon-Docs/blob/master/documentacao/01-arquitetura.md),
+> o [guia de extensão](https://github.com/excanear/TechRecon-Docs/blob/master/documentacao/09-guia-de-extensao.md),
+> as [decisões de design](https://github.com/excanear/TechRecon-Docs/blob/master/documentacao/11-decisoes-de-design.md)
+> e a [solução de problemas](https://github.com/excanear/TechRecon-Docs/blob/master/documentacao/12-solucao-de-problemas.md).
 
 | Análise da aba: tecnologias | Análise da aba: vulnerabilidades priorizadas |
 |---|---|
