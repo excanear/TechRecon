@@ -1,4 +1,4 @@
-import { ArrowLeft, CircleStop, Globe2, Loader2, Play, Trash2 } from 'lucide-react';
+import { ArrowLeft, CircleStop, Globe2, LayoutDashboard, Loader2, Play, Trash2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { CATEGORY_LABELS } from '../../fingerprinting/signature';
 import type { MisconfigRecord, ScanSession } from '../../scan/types';
@@ -124,6 +124,9 @@ function SessionCard({ session, inventory, onOpen, onAbort, onDelete, open }: {
             <Trash2 size={13} /> Excluir
           </button>
         )}
+        <button type="button" className={ui.button} onClick={() => void chrome.tabs.create({ url: chrome.runtime.getURL(`dashboard.html?session=${encodeURIComponent(session.id)}`) })}>
+          <LayoutDashboard size={13} /> Abrir painel
+        </button>
         {session.error && <span className={styles.error}>{session.error}</span>}
       </div>
       {open && inventory && <InventoryView inventory={inventory} session={session} />}

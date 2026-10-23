@@ -184,6 +184,25 @@ sensíveis: o scan não requisita nada que o próprio site não linke.
 
 Sessões, inventário, vulnerabilidades e achados de configuração ficam em **IndexedDB**, no perfil do navegador.
 
+### Painel e export da varredura
+
+**Abrir painel**, no card de cada varredura, abre `dashboard.html` numa aba cheia. O painel
+mostra a sessão (escopo, autorização registrada, status ao vivo), os indicadores e as abas:
+- **Vulnerabilidades:** lista completa priorizada, com busca, filtros de severidade e de
+  tecnologia, "Somente CISA KEV" e detalhe expansível (KEV, EPSS, faixas afetadas, referências);
+- **Configuração**, **Tecnologias**, **Páginas** e **Hosts**.
+
+Exports, todos gerados localmente a partir dos dados da sessão:
+
+| Formato | Conteúdo |
+|---|---|
+| Relatório HTML | Arquivo único e estático: sem nenhum script, com CSP `default-src 'none'`, todo texto escapado e só links `http(s)`. Pode ser aberto e compartilhado com segurança. Segue o tema claro/escuro do sistema. |
+| Markdown | Relatório com resumo, vulnerabilidades priorizadas, falhas de consulta, configuração, tecnologias e páginas |
+| JSON | `techrecon.scan-report/v1`, completo (inclui `kev`/`epss` com os estados `null` e ausente) |
+| CSV | Uma tabela por arquivo (vulnerabilidades, tecnologias, configuração, páginas), UTF-8 com BOM. Células que começam com `= + - @` são neutralizadas contra injeção de fórmulas em planilhas. |
+
+Em todos os formatos, URLs passam pela mesma redação de tokens e sessões usada no resto da extensão.
+
 ## Permissões
 
 | Permissão | Motivo |

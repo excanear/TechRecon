@@ -1,0 +1,12 @@
+/* The shared theme sizes the body as a 400×580 popup; the dashboard is a full tab. */
+html[data-page='dashboard'],
+html[data-page='dashboard'] body {
+  width: auto;
+  height: auto;
+  min-height: 100%;
+  overflow: auto;
+}
+
+html[data-page='dashboard'] #root {
+  height: auto;
+}
