@@ -1,0 +1,59 @@
+name: Release
+
+# Push a tag like v1.0.0 (matching package.json "version") to publish a release with a ready-to-load
+# build of the extension attached.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Tag must match package.json version
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          if [ "v${version}" != "${GITHUB_REF_NAME}" ]; then
+            echo "Tag ${GITHUB_REF_NAME} does not match package.json version ${version}" >&2
+            exit 1
+          fi
+
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+
+      - name: Package dist/
+        run: |
+          name="techrecon-${GITHUB_REF_NAME}.zip"
+          (cd dist && zip -r -X "../${name}" .)
+          sha256sum "${name}" > "${name}.sha256"
+          echo "ASSET=${name}" >> "$GITHUB_ENV"
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cat > notes.md <<NOTES
+          ## Instalação
+
+          1. Baixe **${ASSET}** abaixo e descompacte numa pasta (por exemplo, \`techrecon\`).
+          2. No Chrome, abra \`chrome://extensions\` e ative o **Modo do desenvolvedor**.
+          3. Clique em **Carregar sem compactação** e selecione a pasta descompactada (a que contém \`manifest.json\`).
+          4. Fixe o ícone do TechRecon na barra e abra um site http(s).
+
+          Para atualizar, substitua o conteúdo da pasta pela versão nova e clique em ↻ no card da extensão.
+          Integridade: \`${ASSET}.sha256\`. Compilado a partir do commit ${GITHUB_SHA} por este workflow.
+
+          Documentação completa no [README](https://github.com/${GITHUB_REPOSITORY}#readme).
+          NOTES
+          gh release create "${GITHUB_REF_NAME}" "${ASSET}" "${ASSET}.sha256" \
+            --title "TechRecon ${GITHUB_REF_NAME}" --notes-file notes.md --verify-tag

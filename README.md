@@ -1,5 +1,9 @@
 # TechRecon
 
+[![CI](https://github.com/excanear/TechRecon/actions/workflows/ci.yml/badge.svg)](https://github.com/excanear/TechRecon/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/excanear/TechRecon)](https://github.com/excanear/TechRecon/releases/latest)
+[![Licença: MIT](https://img.shields.io/badge/licen%C3%A7a-MIT-blue)](LICENSE)
+
 Extensão Chrome (Manifest V3) de **reconhecimento de aplicações web** para pentesters éticos.
 Identifica as tecnologias de um site, com versão, confiança e evidência, cruza as versões com
 vulnerabilidades conhecidas e prioriza o que tem exploração real. Funciona de dois modos:
@@ -25,23 +29,45 @@ Princípios aplicados no código, não só neste texto:
 
 O roadmap que levou a esta versão está em [`docs/PLAN.md`](docs/PLAN.md).
 
-## Instalação e build
+| Análise da aba: tecnologias | Análise da aba: vulnerabilidades priorizadas |
+|---|---|
+| ![Popup com as tecnologias detectadas, versão, confiança e evidências](docs/images/popup-tecnologias.png) | ![Popup com CVEs ordenadas por prioridade, selos KEV e EPSS](docs/images/popup-vulnerabilidades.png) |
 
-Requisitos: Node.js 20+ e Chrome/Chromium 116+.
+![Painel da varredura em aba cheia: indicadores, abas e lista de vulnerabilidades com KEV e EPSS](docs/images/painel-varredura.png)
+
+<sub>Capturas geradas pelos testes e2e sobre o site local de teste, com consultas reais a NVD, OSV, CISA KEV e EPSS.</sub>
+
+## Instalação rápida (sem compilar)
+
+Requisito: Chrome, Edge ou outro navegador Chromium, versão 116 ou mais recente.
+
+1. Na página de [**Releases**](https://github.com/excanear/TechRecon/releases/latest), baixe o arquivo
+   `techrecon-vX.Y.Z.zip` e descompacte numa pasta que você vá manter (por exemplo, `Documentos/techrecon`).
+2. No navegador, abra `chrome://extensions` (no Edge, `edge://extensions`).
+3. Ative o **Modo do desenvolvedor**.
+4. Clique em **Carregar sem compactação** e selecione a pasta descompactada, a que contém o `manifest.json`.
+5. Fixe o ícone do TechRecon na barra, abra um site http(s) e clique nele, ou use o atalho `Alt+Shift+T`.
+
+Para atualizar, baixe a versão nova, substitua o conteúdo da pasta e clique em ↻ no card da
+extensão. Cada release traz um arquivo `.sha256` para conferir a integridade do `.zip`, e o pacote é
+compilado e testado pelo GitHub Actions a partir do commit indicado na release.
+
+> A extensão não está na Chrome Web Store, por isso é instalada em modo desenvolvedor. O navegador
+> pode mostrar um aviso sobre extensões nesse modo; ele é esperado.
+
+## Compilar a partir do código
+
+Requisitos: **Node.js 22.22+ ou 24.15+** (o arquivo [`.nvmrc`](.nvmrc) indica 24, a versão LTS) e
+Chrome/Chromium 116+. O build em si funciona a partir do Node 20.19, mas os testes não.
 
 ```bash
-npm install
+nvm use              # opcional, se você usa nvm: seleciona a versão do .nvmrc
+npm ci               # instala exatamente as versões do package-lock.json
 npm run build        # typecheck + build → dist/
 ```
 
-### Carregar no navegador
-
-1. Abra `chrome://extensions`.
-2. Ative o **Modo do desenvolvedor**.
-3. Clique em **Carregar sem compactação** e selecione a pasta `dist/`.
-4. Abra um site http(s) e clique no ícone do TechRecon, ou use o atalho `Alt+Shift+T`.
-
-Depois de mudar o código, rode `npm run build` e clique em ↻ no card da extensão.
+Depois carregue a pasta `dist/` como no passo 4 da instalação rápida. Ao mudar o código, rode
+`npm run build` de novo e clique em ↻ no card da extensão.
 
 ### Scripts
 
@@ -50,8 +76,11 @@ Depois de mudar o código, rode `npm run build` e clique em ↻ no card da exten
 | `npm run build` | Typecheck (tsc) + build do popup, painel, service worker e offscreen + build do coletor (IIFE) |
 | `npm test` | Testes unitários (Vitest): assinaturas, motor, versões, Wappalyzer, CPE/NVD, OSV, CVSS, KEV/EPSS, correlação, escopo, crawler, sessões, configuração, recon e exportações |
 | `npm run e2e` | Build de teste + Playwright: carrega a extensão no Chromium, analisa uma página local e faz uma varredura completa de um site local de várias páginas, incluindo painel e exports. As consultas a NVD, OSV, CISA KEV e EPSS são **ao vivo** (precisa de rede) |
-| `npm run icons` | Regera os PNGs do ícone a partir do SVG |
+| `npm run icons` | Redesenha os PNGs do ícone (16 a 128 px) com o Chromium do Playwright. Os PNGs já estão no repositório; só é preciso rodar ao mudar o desenho. |
 
+> Antes do primeiro `npm run e2e` (ou `npm run icons`), instale o navegador usado pelo Playwright:
+> `npx playwright install chromium`.
+>
 > `npm run e2e` gera um `dist/` com permissão extra de host para `127.0.0.1`/`localhost`, porque
 > testes automatizados não conseguem clicar no ícone da barra nem responder ao pedido de permissão.
 > **Rode `npm run build` antes de carregar ou distribuir a extensão.**
@@ -418,9 +447,26 @@ opcional e só é concedido quando você autoriza uma varredura.
   recon e captura de headers) e a varredura completa de um site local (crawl, guard-rails, CVEs,
   configuração, painel e exports).
 
+### Integração contínua e releases
+
+- **CI** ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)): a cada push no `master` e em cada
+  pull request, roda os testes unitários e o build de produção (com typecheck). Os e2e ficam fora do
+  CI porque consultam NVD, OSV, KEV e EPSS ao vivo e podem falhar por limite de requisições; rode-os
+  localmente.
+- **Release** ([`.github/workflows/release.yml`](.github/workflows/release.yml)): para publicar uma
+  versão, atualize `version` no `package.json`, faça o commit e envie uma tag igual:
+
+  ```bash
+  git tag v1.0.1
+  git push origin v1.0.1
+  ```
+
+  O workflow confere que a tag bate com o `package.json`, roda os testes, compila e publica a release
+  com o `.zip` do `dist/` e o `.sha256` correspondente.
+
 ## Licença
 
-O código do TechRecon é distribuído sob a licença **MIT** (declarada em `package.json`).
+O código do TechRecon é distribuído sob a licença **MIT**; veja o arquivo [`LICENSE`](LICENSE).
 
 A base Wappalyzer ([enthec/webappanalyzer](https://github.com/enthec/webappanalyzer)) é **GPL-3.0** e
 não faz parte da extensão: ela só é baixada se o usuário optar por isso. A pasta
