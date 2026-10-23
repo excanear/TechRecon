@@ -1,0 +1,157 @@
+/* Design tokens. Dark is the default; light is opt-in from the options view. */
+:root {
+  --bg: #121826;
+  --surface: #18202f;
+  --surface-2: #1e2839;
+  --line: #273246;
+  --line-strong: #34415a;
+  --text: #e4e8f0;
+  --text-2: #a9b3c4;
+  --muted: #8c97aa;
+  --accent: #4fc7b8;
+  --accent-ink: #0d2b28;
+  --accent-soft: rgba(79, 199, 184, 0.14);
+
+  --sev-critical: #f0607a;
+  --sev-high: #f0904a;
+  --sev-medium: #d9b44a;
+  --sev-low: #7fa6cf;
+  --sev-none: #6b778c;
+
+  --ok: #4fc7b8;
+  --warn: #e0a457;
+  --danger: #f0607a;
+
+  --font: 'IBM Plex Sans Condensed', 'Arial Narrow', system-ui, sans-serif;
+  --mono: 'IBM Plex Mono', ui-monospace, 'Cascadia Mono', Consolas, monospace;
+
+  --fs-xs: 11px;
+  --fs-sm: 12px;
+  --fs-md: 13px;
+  --fs-lg: 15px;
+  --fs-xl: 18px;
+
+  --r-sm: 3px;
+  --r-md: 5px;
+  --gap: 8px;
+  --pad: 12px;
+
+  color-scheme: dark;
+}
+
+:root[data-theme='light'] {
+  --bg: #f3f5f8;
+  --surface: #ffffff;
+  --surface-2: #eef1f5;
+  --line: #dde2ea;
+  --line-strong: #c7cfdb;
+  --text: #182131;
+  --text-2: #3f4b5f;
+  --muted: #667286;
+  --accent: #127e72;
+  --accent-ink: #ffffff;
+  --accent-soft: rgba(18, 126, 114, 0.1);
+  --sev-critical: #c2304b;
+  --sev-high: #c4601b;
+  --sev-medium: #96720e;
+  --sev-low: #3d6c9e;
+  --sev-none: #7b8698;
+  --ok: #127e72;
+  --warn: #a8661b;
+  --danger: #c2304b;
+  color-scheme: light;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  width: 400px;
+  height: 580px;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: var(--fs-md);
+  line-height: 1.4;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Detached use (e.g. popup.html opened in a tab for tests) still renders as a popup-sized panel. */
+#root {
+  height: 100%;
+}
+
+button,
+input,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+  border-radius: var(--r-sm);
+}
+
+.mono {
+  font-family: var(--mono);
+  font-size: 0.92em;
+  letter-spacing: -0.01em;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--line-strong);
+  border-radius: 4px;
+  border: 2px solid var(--bg);
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

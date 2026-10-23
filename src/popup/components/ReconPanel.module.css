@@ -1,0 +1,162 @@
+.section {
+  padding: 8px var(--pad);
+  border-bottom: 1px solid var(--line);
+}
+
+.sectionHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.sectionHead h3,
+.section summary {
+  margin: 0;
+  font-size: var(--fs-md);
+  font-weight: 600;
+}
+
+.section summary {
+  cursor: pointer;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.summaryMeta {
+  margin-left: auto;
+  font-weight: 400;
+  font-size: var(--fs-xs);
+  color: var(--muted);
+}
+
+.count {
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  color: var(--text-2);
+}
+
+.caption {
+  margin: 4px 0 6px;
+  font-size: var(--fs-xs);
+  color: var(--muted);
+}
+
+.headerList,
+.scriptList,
+.hostList {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+}
+
+.headerList li {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr);
+  gap: 6px;
+  padding: 4px 0;
+}
+
+.headerList li + li {
+  border-top: 1px solid var(--line);
+}
+
+.present {
+  color: var(--ok);
+  margin-top: 2px;
+}
+
+.absent {
+  color: var(--warn);
+  margin-top: 2px;
+}
+
+.unknown {
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+.headerBody {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.headerName {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 500;
+}
+
+.stateText {
+  font-weight: 400;
+  font-size: var(--fs-xs);
+  color: var(--muted);
+}
+
+.headerValue {
+  font-size: 10.5px;
+  color: var(--text-2);
+  overflow-wrap: anywhere;
+  max-height: 46px;
+  overflow: hidden;
+}
+
+.headerNote {
+  font-size: var(--fs-xs);
+  color: var(--warn);
+}
+
+.scriptList li {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 4px 0;
+}
+
+.scriptList li + li {
+  border-top: 1px solid var(--line);
+}
+
+.url {
+  font-size: 10.5px;
+  overflow-wrap: anywhere;
+  color: var(--text-2);
+}
+
+.flags {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.hostList li {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 2px 0;
+  font-size: var(--fs-sm);
+}
+
+.hostList .mono {
+  overflow-wrap: anywhere;
+}
+
+.hostTypes {
+  color: var(--muted);
+  text-align: right;
+  font-size: var(--fs-xs);
+  flex: none;
+}
+
+.rawHeader {
+  flex-direction: column;
+}
+
+.rawHeader .hostTypes {
+  text-align: left;
+  overflow-wrap: anywhere;
+  flex: initial;
+}

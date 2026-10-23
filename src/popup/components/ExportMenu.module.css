@@ -1,0 +1,33 @@
+.root {
+  position: relative;
+}
+
+.menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  z-index: 10;
+  min-width: 190px;
+  padding: 4px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+  box-shadow: 0 8px 24px rgba(4, 8, 16, 0.45);
+}
+
+.item {
+  display: block;
+  width: 100%;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  text-align: left;
+  font-size: var(--fs-sm);
+}
+
+.item:hover,
+.item:focus-visible {
+  background: var(--accent-soft);
+  outline: none;
+}

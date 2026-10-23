@@ -1,0 +1,87 @@
+.head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px var(--pad);
+  border-bottom: 1px solid var(--line);
+}
+
+.head h2 {
+  margin: 0;
+  font-size: var(--fs-lg);
+  font-weight: 600;
+}
+
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px var(--pad);
+  border-bottom: 1px solid var(--line);
+}
+
+.toggle {
+  display: grid;
+  grid-template-columns: 16px 1fr;
+  gap: 8px;
+  align-items: start;
+  cursor: pointer;
+}
+
+.toggle input {
+  margin: 2px 0 0;
+  accent-color: var(--accent);
+}
+
+.toggle span,
+.label {
+  display: flex;
+  flex-direction: column;
+  font-weight: 500;
+}
+
+.label {
+  flex-direction: row;
+  gap: 6px;
+  align-items: baseline;
+}
+
+.toggle small,
+.label small {
+  font-weight: 400;
+  font-size: var(--fs-xs);
+  color: var(--muted);
+}
+
+.keyRow {
+  display: flex;
+  gap: 6px;
+}
+
+.input {
+  flex: 1;
+  min-width: 0;
+  height: 26px;
+  padding: 0 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  font-family: var(--mono);
+  font-size: var(--fs-xs);
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.help,
+.footer {
+  margin: 0;
+  font-size: var(--fs-xs);
+  color: var(--muted);
+}
+
+.footer {
+  padding: 10px var(--pad);
+}
