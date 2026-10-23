@@ -48,7 +48,7 @@ popup (lançador + progresso)      dashboard (aba cheia: inventário, mapa, matr
 | **2. Crawler** | BFS no escopo reusando `collector.ts`, mapa do site, discovery por CT logs (crt.sh), UI de novo scan + progresso |
 | **3. Fingerprint força máxima** | Ingestão Wappalyzer **por download em runtime** (GPL-3.0 não vai no bundle MIT; commit + SHA-256 fixados), curadas com precedência, proveniência `source`, `requires`/`requiresCategory`, versões condicionais |
 | **4. CVE em escala** | Correlação única por tecnologia sobre o inventário agregado (cache/limites compartilhados), dedupe entre tecnologias, enriquecimento CISA KEV + EPSS com estado "não verificado" explícito, prioridade KEV → faixa EPSS → CVSS |
-| **5. Misconfig passivo** | Headers, cookies, CORS, conteúdo misto, SRI, segredos expostos, arquivos sensíveis — só observável/GET idempotente |
+| **5. Misconfig passivo** | Checagens sobre as respostas que o crawl já obteve, sem requisições extras: HTTPS, HSTS, CSP, nosniff, framing, versão em headers, CORS, conteúdo misto, SRI. Cookies (Set-Cookie oculto), segredos e arquivos sensíveis ficaram fora |
 | **6. Dashboard + export** | Aba cheia interativa + export JSON/MD/CSV/HTML |
 
 Cada fase fecha com build + typecheck + testes verdes e commit próprio.

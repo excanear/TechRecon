@@ -10,7 +10,7 @@ import type { AggregatedTech } from '../crawler/aggregate';
 import type { AssetRecord, PageRecord } from '../crawler/types';
 import { runScan, type ScanRunHandle } from '../scan/runner';
 import { authorizeSession, createSession, deleteSession, listSessions, loadSession, saveSession } from '../scan/session';
-import type { ScanSession, ScopeConfig, TechCveRecord, VulnFindingRecord } from '../scan/types';
+import type { MisconfigRecord, ScanSession, ScopeConfig, TechCveRecord, VulnFindingRecord } from '../scan/types';
 import { correlationContext, enrichmentContext } from './intel';
 import { offscreenFetch } from './offscreenBridge';
 import { closeOffscreen } from './offscreenBridge';
@@ -34,6 +34,7 @@ export type ScanEvent =
       assets: AssetRecord[];
       techCve: TechCveRecord[];
       vulnerabilities: VulnFindingRecord[];
+      misconfigurations: MisconfigRecord[];
     }
   | { type: 'error'; message: string };
 
@@ -55,15 +56,17 @@ async function sendSessions(port: chrome.runtime.Port): Promise<void> {
 }
 
 async function sendInventory(port: chrome.runtime.Port, sessionId: string): Promise<void> {
-  const [technologies, pages, assets, techCve, vulnerabilities] = await Promise.all([
+  const [technologies, pages, assets, techCve, vulnerabilities, misconfigurations] = await Promise.all([
     getAllByIndex<AggregatedTech>('techFindings', 'sessionId', sessionId),
     getAllByIndex<PageRecord>('pages', 'sessionId', sessionId),
     getAllByIndex<AssetRecord>('assets', 'sessionId', sessionId),
     getAllByIndex<TechCveRecord>('techCve', 'sessionId', sessionId),
     getAllByIndex<VulnFindingRecord>('vulnFindings', 'sessionId', sessionId),
+    getAllByIndex<MisconfigRecord>('misconfigFindings', 'sessionId', sessionId),
   ]);
   vulnerabilities.sort((a, b) => a.rank - b.rank);
-  port.postMessage({ type: 'inventory', sessionId, technologies, pages, assets, techCve, vulnerabilities } satisfies ScanEvent);
+  misconfigurations.sort((a, b) => a.rank - b.rank);
+  port.postMessage({ type: 'inventory', sessionId, technologies, pages, assets, techCve, vulnerabilities, misconfigurations } satisfies ScanEvent);
 }
 
 async function startSession(sessionId: string): Promise<void> {

@@ -9,6 +9,8 @@ const LIMITS = { scripts: 400, stylesheets: 200, links: 2000, inlineTotal: 300_0
 export interface ExtractResult {
   snapshot: PageSnapshot;
   links: string[];
+  /** External script URLs loaded without a Subresource Integrity attribute. */
+  scriptsWithoutIntegrity: string[];
 }
 
 /** Builds a PageSnapshot and the raw outbound links from a parsed document + response headers. */
@@ -23,12 +25,16 @@ export function extractFromDocument(doc: Document, finalUrl: string, rawHeaders:
   };
 
   const scriptSrcs: string[] = [];
+  const scriptsWithoutIntegrity: string[] = [];
   let inlineScripts = '';
   for (const el of Array.from(doc.querySelectorAll('script'))) {
     const src = el.getAttribute('src');
     if (src) {
       const u = abs(src);
-      if (u && scriptSrcs.length < LIMITS.scripts) scriptSrcs.push(u);
+      if (u && scriptSrcs.length < LIMITS.scripts) {
+        scriptSrcs.push(u);
+        if (!el.getAttribute('integrity')?.trim()) scriptsWithoutIntegrity.push(u);
+      }
     } else if (inlineScripts.length < LIMITS.inlineTotal) {
       inlineScripts += `${el.textContent ?? ''}\n`;
     }
@@ -73,5 +79,5 @@ export function extractFromDocument(doc: Document, finalUrl: string, rawHeaders:
     dom: {},
     resources: [],
   };
-  return { snapshot, links };
+  return { snapshot, links, scriptsWithoutIntegrity };
 }

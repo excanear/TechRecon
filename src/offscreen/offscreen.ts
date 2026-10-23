@@ -67,7 +67,7 @@ async function fetchPage(url: string): Promise<FetchedPage> {
     }
 
     const doc = new DOMParser().parseFromString(html, 'text/html');
-    const { snapshot, links } = extractFromDocument(doc, finalUrl, headers);
+    const { snapshot, links, scriptsWithoutIntegrity } = extractFromDocument(doc, finalUrl, headers);
     return {
       requestedUrl: url,
       finalUrl,
@@ -77,6 +77,7 @@ async function fetchPage(url: string): Promise<FetchedPage> {
       headers,
       links,
       snapshot,
+      scriptsWithoutIntegrity,
       bytes,
       skippedReason: bytes > MAX_BYTES ? 'too-large' : undefined,
     };

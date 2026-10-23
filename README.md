@@ -170,7 +170,19 @@ de consulta aparecem por tecnologia; nada é presumido. Interromper a varredura 
 mantém o que já foi consultado e marca o resultado como parcial. Com "Consultar
 vulnerabilidades" desligado, o scan não faz nenhuma consulta.
 
-Sessões, inventário e vulnerabilidades ficam em **IndexedDB**, no perfil do navegador.
+**Configuração (passiva):** durante o crawl, cada página HTML obtida é examinada a partir da
+resposta que o crawler **já recebeu**, sem nenhuma requisição adicional (um e2e garante que só
+são requisitadas páginas linkadas pelo site e os recursos que elas referenciam). Checagens:
+página sem HTTPS; HSTS ausente ou fraco; CSP ausente ou permissiva (header ou meta);
+`X-Content-Type-Options` ausente; falta de proteção contra framing (X-Frame-Options ou
+`frame-ancestors` em header); versão divulgada em `Server`/`X-Powered-By`; CORS `*` (e `*` com
+credenciais); conteúdo misto (scripts e CSS via HTTP em página HTTPS); scripts de terceiros sem
+SRI. Os achados são agregados por site, com o número de páginas afetadas e exemplos (URLs
+redigidas). Atributos de cookies (Secure, HttpOnly, SameSite) **não** são verificados no scan,
+porque o navegador não expõe `Set-Cookie` a extensões. Não há busca por arquivos ou caminhos
+sensíveis: o scan não requisita nada que o próprio site não linke.
+
+Sessões, inventário, vulnerabilidades e achados de configuração ficam em **IndexedDB**, no perfil do navegador.
 
 ## Permissões
 

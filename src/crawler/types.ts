@@ -13,6 +13,8 @@ export interface FetchedPage {
   links: string[];
   /** Engine input built from the parsed document + response headers. */
   snapshot: PageSnapshot;
+  /** External scripts without an integrity attribute (for the SRI check). */
+  scriptsWithoutIntegrity?: string[];
   bytes: number;
   error?: string;
   skippedReason?: 'not-html' | 'too-large' | 'error';

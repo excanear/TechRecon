@@ -1,7 +1,7 @@
 import { ArrowLeft, CircleStop, Globe2, Loader2, Play, Trash2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { CATEGORY_LABELS } from '../../fingerprinting/signature';
-import type { ScanSession } from '../../scan/types';
+import type { MisconfigRecord, ScanSession } from '../../scan/types';
 import { SEVERITY_LABEL, SEVERITY_VAR } from '../format';
 import { useScan, type Inventory } from '../useScan';
 import { EnrichmentNote, ExploitBadges, PRIORITY_HELP } from './Exploit';
@@ -104,6 +104,7 @@ function SessionCard({ session, inventory, onOpen, onAbort, onDelete, open }: {
             {statusLabel(session)} · {session.counters.fetched} págs · {session.counters.technologies} techs
             {session.cve && session.cve.status !== 'disabled' && session.cve.status !== 'running' ? ` · ${session.counters.vulnerabilities} CVEs` : ''}
             {session.counters.exploited ? <strong className={styles.kev}> · {session.counters.exploited} KEV</strong> : null}
+            {session.misconfig ? ` · ${session.counters.misconfigurations} config.` : ''}
           </small>
         </span>
         {running ? <Loader2 size={14} className={styles.spin} /> : null}
@@ -188,6 +189,46 @@ function ScanVulns({ inventory, session }: { inventory: Inventory; session: Scan
   );
 }
 
+const MISCONFIG_SEVERITY: Record<MisconfigRecord['severity'], { label: string; color: string }> = {
+  high: { label: 'Alta', color: 'var(--sev-high)' },
+  medium: { label: 'Média', color: 'var(--sev-medium)' },
+  low: { label: 'Baixa', color: 'var(--sev-low)' },
+  info: { label: 'Info', color: 'var(--muted)' },
+};
+
+function ScanMisconfig({ inventory, session }: { inventory: Inventory; session: ScanSession }) {
+  const checked = session.misconfig?.checkedPages;
+  if (checked === undefined) return null;
+  const list = inventory.misconfigurations;
+  return (
+    <section className={styles.vulns} aria-label="Configuração do site">
+      <h4>
+        Configuração (passiva) <span>{list.length}</span>
+      </h4>
+      <p className={styles.invMeta}>
+        {checked} página(s) HTML examinada(s) a partir das respostas já obtidas pelo crawl, sem requisições extras. Atributos de cookies não são observáveis (o navegador oculta Set-Cookie).
+      </p>
+      <ul className={styles.invList} aria-label="Achados de configuração">
+        {list.map((f) => (
+          <li key={f.key}>
+            <span className={styles.invName}>
+              <span className={ui.chip} style={{ borderColor: MISCONFIG_SEVERITY[f.severity].color, color: MISCONFIG_SEVERITY[f.severity].color }}>
+                {MISCONFIG_SEVERITY[f.severity].label}
+              </span>
+              <span>{f.title}</span>
+            </span>
+            <span className={styles.invCat}>
+              {f.detail} · {f.pageCount} de {checked} pág.
+            </span>
+            {f.evidence && <span className={`${styles.invCat} mono`}>{f.evidence}</span>}
+          </li>
+        ))}
+      </ul>
+      {list.length === 0 && <p className={styles.invMeta}>Nenhum problema de configuração observado.</p>}
+    </section>
+  );
+}
+
 function InventoryView({ inventory, session }: { inventory: Inventory; session: ScanSession }) {
   const observed = inventory.technologies.filter((t) => !t.inferred);
   return (
@@ -196,6 +237,7 @@ function InventoryView({ inventory, session }: { inventory: Inventory; session: 
         {inventory.pages.length} páginas varridas · {observed.length} tecnologias observadas · {inventory.assets.filter((a) => a.thirdParty).length} hosts de terceiros
       </p>
       <ScanVulns inventory={inventory} session={session} />
+      <ScanMisconfig inventory={inventory} session={session} />
       <ul className={styles.invList} aria-label="Tecnologias do site">
         {inventory.technologies.slice(0, 60).map((t) => (
           <li key={t.id}>

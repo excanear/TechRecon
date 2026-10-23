@@ -72,4 +72,23 @@ test('crawls a whole site, aggregates technologies and never follows destructive
   await expect(popup.getByText(/· \d+ KEV/)).toBeVisible();
   await vulns.scrollIntoViewIfNeeded();
   await vulns.screenshot({ path: 'test-results/popup-scan-vulns.png' });
+
+  // Passive configuration findings, derived from responses the crawl already had.
+  const config = popup.getByRole('region', { name: 'Configuração do site' });
+  const findings = config.getByRole('list', { name: 'Achados de configuração' });
+  await expect(findings).toContainText('Página servida sem HTTPS');
+  await expect(findings).toContainText('server: nginx/1.18.0 (Ubuntu)');
+  await expect(findings).toContainText('x-powered-by: PHP/7.4.3');
+  await expect(findings).toContainText('Sem proteção contra framing');
+  await expect(findings).toContainText("'unsafe-inline'");
+  await expect(findings).not.toContainText('X-Content-Type-Options ausente');
+  await config.scrollIntoViewIfNeeded();
+  await config.screenshot({ path: 'test-results/popup-scan-config.png' });
+
+  // The checks add no requests: everything fetched is a page linked by the site or an asset it references.
+  const linked = new Set(['/', '/about', '/team', '/products', '/products/widget', '/contact']);
+  const unexpected = site.requests
+    .map((r) => r.replace(/^GET /, '').split('?')[0]!)
+    .filter((p) => !linked.has(p) && !p.startsWith('/wp-includes/'));
+  expect(unexpected, 'no path outside the crawl may be requested').toEqual([]);
 });

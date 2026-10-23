@@ -9,6 +9,8 @@ import { put } from '../db';
 import { siteOf } from '../recon';
 import { HostRateLimiter } from '../scope/limits';
 import type { Detection } from '../types';
+import { MisconfigAggregator } from '../misconfig/aggregate';
+import { checkPage } from '../misconfig/checks';
 import { runCvePhase, type CveDeps } from './cvePhase';
 import { assertRunnable, saveSession } from './session';
 import { emptyCounters, type ScanSession } from './types';
@@ -47,6 +49,7 @@ export function runScan(session: ScanSession, deps: ScanRunnerDeps): ScanRunHand
   const promise = (async (): Promise<ScanSession> => {
     const seedSite = session.scope.seeds[0] ? siteOf(hostOf(session.scope.seeds[0])) : '';
     const aggregator = new TechAggregator();
+    const misconfig = new MisconfigAggregator();
     const assetCounts = new Map<string, { count: number; host: string }>();
     let pageIndex = 0;
 
@@ -67,6 +70,7 @@ export function runScan(session: ScanSession, deps: ScanRunnerDeps): ScanRunHand
     const onPage = async (page: FetchedPage, depth: number, detections: Detection[]) => {
       pageIndex++;
       aggregator.add(detections, page.finalUrl);
+      if (!page.skippedReason && page.ok) misconfig.add(checkPage(page), page.finalUrl);
       recordAsset(page.finalUrl);
       for (const src of page.snapshot.scriptSrcs) recordAsset(src);
 
@@ -111,6 +115,14 @@ export function runScan(session: ScanSession, deps: ScanRunnerDeps): ScanRunHand
       }
 
       session.counters.technologies = inventory.length;
+
+      // Passive configuration findings, from the pages already fetched (no extra requests).
+      const misconfigFindings = misconfig.finish();
+      for (const [i, finding] of misconfigFindings.entries()) {
+        await put('misconfigFindings', { key: `${session.id}:${i}`, sessionId: session.id, rank: i, ...finding }).catch(() => undefined);
+      }
+      session.counters.misconfigurations = misconfigFindings.length;
+      session.misconfig = { checkedPages: misconfig.checkedPages };
 
       if (summary.aborted) {
         // Nothing more to do: the operator stopped the scan.

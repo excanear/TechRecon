@@ -2,6 +2,7 @@
 // Everything here is persisted in IndexedDB and never leaves the browser.
 
 import type { AffectedTech } from '../cve/enrich';
+import type { MisconfigFinding } from '../misconfig/aggregate';
 import type { EnrichmentStatus, TechVulnReport, Vulnerability } from '../types';
 
 /** Correlation outcome for one inventory technology (vulnerabilities are stored deduped, by id). */
@@ -9,6 +10,13 @@ export interface TechCveRecord extends Omit<TechVulnReport, 'vulns'> {
   key: string;
   sessionId: string;
   vulnIds: string[];
+}
+
+/** One passive configuration finding of the site (see misconfig/checks.ts). */
+export interface MisconfigRecord extends MisconfigFinding {
+  key: string;
+  sessionId: string;
+  rank: number;
 }
 
 /** One unique vulnerability of the site, enriched, with its priority rank (0 = most urgent). */
@@ -95,6 +103,8 @@ export interface ScanSession {
   finishedAt?: string;
   error?: string;
   cve?: ScanCveState;
+  /** Passive configuration checks: how many HTML pages were examined. */
+  misconfig?: { checkedPages: number };
 }
 
 export function emptyCounters(): ScanCounters {
