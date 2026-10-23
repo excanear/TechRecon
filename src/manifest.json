@@ -25,8 +25,9 @@
     "service_worker": "background.js",
     "type": "module"
   },
-  "permissions": ["activeTab", "scripting", "storage"],
-  "host_permissions": ["https://services.nvd.nist.gov/*", "https://api.osv.dev/*"],
+  "permissions": ["activeTab", "scripting", "storage", "offscreen"],
+  "host_permissions": ["https://services.nvd.nist.gov/*", "https://api.osv.dev/*", "https://www.cisa.gov/*"],
+  "optional_host_permissions": ["https://*/*", "http://*/*"],
   "commands": {
     "_execute_action": {
       "suggested_key": { "default": "Alt+Shift+T" },

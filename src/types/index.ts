@@ -116,7 +116,15 @@ export type CategoryId =
   | 'monitoring'
   | 'build-tool'
   | 'cache'
-  | 'consent';
+  | 'consent'
+  | 'cms-extension'
+  | 'database'
+  | 'os'
+  | 'marketing'
+  | 'other';
+
+/** Where a signature comes from: hand-curated in this repo, or the community Wappalyzer dataset. */
+export type SignatureSource = 'curated' | 'wappalyzer';
 
 export type EvidenceType =
   | 'html'
@@ -168,6 +176,8 @@ export interface Detection {
   distroPackage?: string;
   cpe?: string[];
   npm?: string;
+  /** Provenance of the signature that produced this detection. Absent = curated. */
+  source?: SignatureSource;
 }
 
 // ───────────────────────── Vulnerabilities ─────────────────────────
@@ -210,6 +220,38 @@ export interface Vulnerability {
   source: VulnSourceId;
   sourceUrl: string;
   references: Reference[];
+  /** CISA KEV listing. undefined = not checked (or catalog unavailable); null = checked, not listed. */
+  kev?: KevInfo | null;
+  /** FIRST EPSS score. undefined = not checked (or source failed); null = no score published. */
+  epss?: EpssInfo | null;
+}
+
+export interface KevInfo {
+  cve: string;
+  name: string;
+  dateAdded: string;
+  dueDate: string;
+  /** "Known" = CISA links it to ransomware campaigns. */
+  ransomware: boolean;
+  requiredAction: string;
+}
+
+export interface EpssInfo {
+  cve: string;
+  /** Probability of exploitation in the next 30 days (0–1). */
+  score: number;
+  /** Percentile among all scored CVEs (0–1). */
+  percentile: number;
+  /** Date of the EPSS model run. */
+  date: string;
+}
+
+/** Outcome of the exploitation-intelligence enrichment, per source. Errors are shown, never hidden. */
+export interface EnrichmentStatus {
+  kev: { ok: boolean; catalogVersion?: string; fetchedAt?: string; stale?: boolean; error?: string; listed: number };
+  epss: { ok: boolean; date?: string; error?: string; scored: number };
+  /** CVE ids looked up. */
+  cves: number;
 }
 
 export type VulnReportStatus =
@@ -312,6 +354,7 @@ export interface AnalysisState {
   recon: ReconData | null;
   vulnReports: Record<string, TechVulnReport>;
   cveLookupEnabled: boolean;
+  enrichment?: EnrichmentStatus;
 }
 
 export interface Settings {

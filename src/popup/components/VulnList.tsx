@@ -1,9 +1,10 @@
 import { CheckCircle2, ChevronRight, ExternalLink, RotateCw } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import { SEVERITY_RANK } from '../../cve/cvss';
+import { comparePriority } from '../../cve/enrich';
 import { safeHttpUrl } from '../../shared/sanitize';
-import type { Confirmations, TechVulnReport, Vulnerability } from '../../types';
+import type { Confirmations, EnrichmentStatus, TechVulnReport, Vulnerability } from '../../types';
 import { formatDate, REPORT_STATUS_LABEL, SEVERITY_LABEL, SEVERITY_VAR } from '../format';
+import { EnrichmentNote, ExploitBadges, ExploitDetail, PRIORITY_HELP } from './Exploit';
 import styles from './VulnList.module.css';
 import ui from './ui.module.css';
 
@@ -16,6 +17,7 @@ interface VulnListProps {
   onRetry: () => void;
   busy: boolean;
   lookupEnabled: boolean;
+  enrichment?: EnrichmentStatus;
 }
 
 type SeverityFilter = 'all' | 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
@@ -58,6 +60,7 @@ function VulnDetail({ row, confirmed, onToggle }: { row: Row; confirmed: boolean
             </>
           )}
         </dd>
+        <ExploitDetail vuln={vuln} />
         <dt>Detectado</dt>
         <dd>
           {report.techName} <span className="mono">{report.version}</span>
@@ -112,7 +115,7 @@ function VulnDetail({ row, confirmed, onToggle }: { row: Row; confirmed: boolean
   );
 }
 
-export function VulnList({ reports, confirmations, onToggleConfirm, techFilter, onClearTechFilter, onRetry, busy, lookupEnabled }: VulnListProps) {
+export function VulnList({ reports, confirmations, onToggleConfirm, techFilter, onClearTechFilter, onRetry, busy, lookupEnabled, enrichment }: VulnListProps) {
   const [severity, setSeverity] = useState<SeverityFilter>('all');
   const [open, setOpen] = useState<string | null>(null);
 
@@ -125,7 +128,7 @@ export function VulnList({ reports, confirmations, onToggleConfirm, techFilter, 
     }
     return list
       .filter((r) => severity === 'all' || r.vuln.severity === severity)
-      .sort((a, b) => (b.vuln.cvss?.score ?? -1) - (a.vuln.cvss?.score ?? -1) || SEVERITY_RANK[b.vuln.severity] - SEVERITY_RANK[a.vuln.severity]);
+      .sort((a, b) => comparePriority(a.vuln, b.vuln));
   }, [allReports, techFilter, severity]);
 
   const errors = allReports.filter((r) => r.status === 'error' || (r.status === 'ok' && r.message));
@@ -175,6 +178,9 @@ export function VulnList({ reports, confirmations, onToggleConfirm, techFilter, 
           </div>
         )}
 
+        <EnrichmentNote status={enrichment} style={{ margin: '8px var(--pad)' }} />
+        {rows.length > 1 && <p className={ui.note} style={{ margin: '8px var(--pad) 0' }}>{PRIORITY_HELP}</p>}
+
         {pending.length > 0 && <p className={ui.note} style={{ margin: '8px var(--pad)' }}>Consultando {pending.map((p) => p.techName).join(', ')}…</p>}
 
         {rows.length === 0 && lookupEnabled && pending.length === 0 && (
@@ -203,7 +209,9 @@ export function VulnList({ reports, confirmations, onToggleConfirm, techFilter, 
                       {row.report.techName} {row.report.version}
                     </span>
                   </span>
-                  <span className={ui.rowSub}>{row.vuln.title}</span>
+                  <span className={ui.rowSub}>
+                    <ExploitBadges vuln={row.vuln} /> {row.vuln.title}
+                  </span>
                 </span>
                 <span className={ui.rowMeta}>
                   <span className={confirmed ? styles.confirmed : styles.potential}>{confirmed ? 'Confirmada' : 'Potencial'}</span>

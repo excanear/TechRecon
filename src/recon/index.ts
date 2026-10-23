@@ -36,7 +36,7 @@ function hostOf(url: string): string | null {
   }
 }
 
-function cspNotes(csp: string): string[] {
+export function cspNotes(csp: string): string[] {
   const notes: string[] = [];
   const directives = new Map<string, string>();
   for (const part of csp.split(';')) {
@@ -59,7 +59,7 @@ function cspNotes(csp: string): string[] {
   return notes;
 }
 
-function hstsNotes(value: string): string[] {
+export function hstsNotes(value: string): string[] {
   const notes: string[] = [];
   const maxAge = Number(/max-age\s*=\s*"?(\d+)/i.exec(value)?.[1] ?? NaN);
   if (!Number.isFinite(maxAge)) notes.push('max-age ausente ou inválido.');

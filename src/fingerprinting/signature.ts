@@ -1,4 +1,4 @@
-import type { CategoryId } from '../types';
+import type { CategoryId, SignatureSource } from '../types';
 
 /**
  * A single detection rule. `pattern` is tested against one piece of evidence;
@@ -57,8 +57,14 @@ export interface Signature {
   npm?: string;
   implies?: string[];
   excludes?: string[];
+  /** Only reported when at least one of these technologies is also present (detected or inferred). */
+  requires?: string[];
+  /** Only reported when some present technology has one of these categories. */
+  requiresCategories?: CategoryId[];
   /** Factual caveat shown with the detection. */
   note?: string;
+  /** Absent = curated. */
+  source?: SignatureSource;
   rules: SignatureRules;
 }
 
@@ -109,11 +115,17 @@ export const CATEGORY_LABELS: Record<CategoryId, string> = {
   'build-tool': 'Ferramentas de build',
   cache: 'Cache',
   consent: 'Consentimento de cookies',
+  'cms-extension': 'Plugins e temas de CMS',
+  database: 'Bancos de dados',
+  os: 'Sistemas operacionais',
+  marketing: 'Marketing / Publicidade',
+  other: 'Outros',
 };
 
 /** Display order for category groups in the popup. */
 export const CATEGORY_ORDER: CategoryId[] = [
   'cms',
+  'cms-extension',
   'ecommerce',
   'js-framework',
   'web-framework',
@@ -121,6 +133,8 @@ export const CATEGORY_ORDER: CategoryId[] = [
   'ui-framework',
   'web-server',
   'language',
+  'database',
+  'os',
   'cdn',
   'waf',
   'security',
@@ -134,5 +148,7 @@ export const CATEGORY_ORDER: CategoryId[] = [
   'payment',
   'widget',
   'consent',
+  'marketing',
   'font',
+  'other',
 ];

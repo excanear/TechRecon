@@ -1,4 +1,4 @@
-import { RefreshCw, Settings as SettingsIcon } from 'lucide-react';
+import { RefreshCw, Radar, Settings as SettingsIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { SEVERITY_RANK } from '../../cve/cvss';
 import type { AnalysisState, Severity } from '../../types';
@@ -11,6 +11,7 @@ interface HeaderProps {
   busy: boolean;
   onRefresh: () => void;
   onSettings: () => void;
+  onScan: () => void;
   exportMenu: ReactNode;
 }
 
@@ -34,7 +35,7 @@ function statusText(state: AnalysisState | null): string {
   }
 }
 
-export function Header({ state, busy, onRefresh, onSettings, exportMenu }: HeaderProps) {
+export function Header({ state, busy, onRefresh, onSettings, onScan, exportMenu }: HeaderProps) {
   return (
     <header className={styles.header}>
       <div className={styles.top}>
@@ -48,6 +49,9 @@ export function Header({ state, busy, onRefresh, onSettings, exportMenu }: Heade
         <div className={styles.actions}>
           <button type="button" className={styles.iconButton} onClick={onRefresh} disabled={busy || !state} title="Analisar novamente" aria-label="Analisar novamente">
             <RefreshCw size={15} className={busy ? styles.spin : undefined} />
+          </button>
+          <button type="button" className={styles.iconButton} onClick={onScan} title="Varredura do site" aria-label="Varredura do site">
+            <Radar size={15} />
           </button>
           {exportMenu}
           <button type="button" className={styles.iconButton} onClick={onSettings} title="Opções" aria-label="Opções">
@@ -77,6 +81,7 @@ export function Summary({ state, confirmedCount }: { state: AnalysisState; confi
   }
   const observed = state.technologies.filter((t) => !t.inferred).length;
   const highest = STRIP_ORDER.find((s) => counts[s]);
+  const exploited = new Set(vulns.filter((v) => v.kev).map((v) => v.id)).size;
   return (
     <section className={styles.summary} aria-label="Resumo">
       <div className={styles.counter}>
@@ -92,7 +97,15 @@ export function Summary({ state, confirmedCount }: { state: AnalysisState; confi
         </span>
         <span className={styles.countLabel}>
           CVEs potenciais
-          <small>{confirmedCount ? plural(confirmedCount, 'confirmada', 'confirmadas') : 'por versão'}</small>
+          <small>
+            {exploited ? (
+              <span style={{ color: 'var(--sev-critical)', fontWeight: 600 }}>{exploited} no CISA KEV</span>
+            ) : confirmedCount ? (
+              plural(confirmedCount, 'confirmada', 'confirmadas')
+            ) : (
+              'por versão'
+            )}
+          </small>
         </span>
       </div>
       <div className={styles.strip} role="img" aria-label={vulns.length ? STRIP_ORDER.filter((s) => counts[s]).map((s) => `${counts[s]} ${SEVERITY_LABEL[s]}`).join(', ') : 'Nenhuma vulnerabilidade correlacionada'}>

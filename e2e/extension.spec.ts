@@ -80,6 +80,15 @@ test('analyzes a page end to end: fingerprinting, CVEs, recon, export', async ()
   const panel = popup.getByRole('tabpanel');
   if (await panel.getByRole('alert').count()) console.warn('Some live queries failed:', await panel.getByRole('alert').innerText());
   await expect(panel.getByRole('button', { name: /CVE-2020-11022/ })).toBeVisible();
+  // Exploitation intelligence (live CISA KEV + EPSS): CVE-2020-11023 is in KEV, and a KEV entry
+  // ranks first (which KEV entry depends on live data, e.g. a newer WordPress CVE).
+  const partial = panel.getByText(/Inteligência de exploração parcial/);
+  if (await partial.count()) console.warn(await partial.innerText());
+  const kevRow = panel.getByRole('button', { name: /CVE-2020-11023/ }).first();
+  await expect(kevRow).toContainText('KEV');
+  await expect(kevRow).toContainText(/EPSS \d/);
+  await expect(panel.getByRole('button', { name: /CVE-\d{4}-\d+/ }).first()).toContainText('KEV');
+  await expect(popup.getByText(/^\d+ no CISA KEV$/)).toBeVisible();
   await popup.screenshot({ path: 'test-results/popup-vulnerabilities.png' });
 
   // Expand and confirm a finding (analyst action): status changes from potential to confirmed.
@@ -107,10 +116,15 @@ test('analyzes a page end to end: fingerprinting, CVEs, recon, export', async ()
   const cve = report.vulnerabilities.find((v: { id: string }) => v.id === 'CVE-2020-11022');
   expect(cve.status).toBe('confirmed-by-analyst');
   expect(cve.sourceUrl).toMatch(/^https:\/\//);
+  expect(cve.epss.score).toBeGreaterThan(0);
+  const exploited = report.vulnerabilities.find((v: { id: string }) => v.id === 'CVE-2020-11023');
+  expect(exploited).toMatchObject({ priority: 'kev', kev: { dateAdded: '2025-01-23' } });
+  expect(report.summary.knownExploited).toBeGreaterThanOrEqual(1);
 
   const md = await exportVia(/Baixar Markdown/);
   expect(md).toContain('# TechRecon — 127.0.0.1');
   expect(md).toContain('CVE-2020-11022');
+  expect(md).toContain('CISA KEV: exploração ativa confirmada');
 
   // Recon: meta CSP observed passively, cookie listed without its value.
   await popup.getByRole('tab', { name: 'Recon' }).click();

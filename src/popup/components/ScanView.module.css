@@ -1,0 +1,225 @@
+.head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px var(--pad);
+  border-bottom: 1px solid var(--line);
+}
+
+.head h2 {
+  margin: 0;
+  font-size: var(--fs-lg);
+  font-weight: 600;
+}
+
+.intro {
+  margin: 0;
+  padding: 8px var(--pad);
+  font-size: var(--fs-sm);
+  color: var(--muted);
+}
+
+.section {
+  padding: 8px var(--pad);
+  border-bottom: 1px solid var(--line);
+}
+
+.section h3 {
+  margin: 0 0 8px;
+  font-size: var(--fs-md);
+  font-weight: 600;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: var(--fs-xs);
+  color: var(--muted);
+}
+
+.field input {
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  color: var(--text);
+  font-size: var(--fs-sm);
+}
+
+.field input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.row3 {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+}
+
+.checkbox {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-sm);
+}
+
+.checkbox input {
+  accent-color: var(--accent);
+}
+
+.consent {
+  margin: 0;
+  padding: 6px 8px;
+  border-left: 2px solid var(--accent);
+  background: var(--accent-soft);
+  font-size: var(--fs-xs);
+  color: var(--text-2);
+}
+
+.error {
+  margin: 0;
+  color: var(--danger);
+  font-size: var(--fs-xs);
+}
+
+.spin {
+  animation: scanspin 1s linear infinite;
+}
+
+@keyframes scanspin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.card {
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  margin-bottom: 8px;
+  overflow: hidden;
+}
+
+.cardHead {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 0;
+  background: var(--surface);
+  text-align: left;
+  color: var(--text);
+}
+
+.cardTitle {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  font-weight: 500;
+  min-width: 0;
+}
+
+.cardTitle small {
+  font-weight: 400;
+  font-size: var(--fs-xs);
+  color: var(--muted);
+}
+
+.progress {
+  height: 3px;
+  background: var(--line);
+}
+
+.progress span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  transition: width 200ms ease-out;
+}
+
+.cardActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  background: var(--surface);
+  border-top: 1px solid var(--line);
+}
+
+.inventory {
+  padding: 6px 10px 10px;
+  background: var(--bg);
+  border-top: 1px solid var(--line);
+}
+
+.invMeta {
+  margin: 4px 0;
+  font-size: var(--fs-xs);
+  color: var(--muted);
+}
+
+.invList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.invList li {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 4px 0;
+}
+
+.invList li + li {
+  border-top: 1px solid var(--line);
+}
+
+.invName {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 500;
+}
+
+.invVer {
+  font-size: var(--fs-xs);
+  color: var(--text-2);
+}
+
+.invCat {
+  font-size: var(--fs-xs);
+  color: var(--muted);
+}
+
+.vulns {
+  margin: 4px 0 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--line);
+}
+
+.vulns h4 {
+  margin: 6px 0 4px;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+
+.vulns h4 span {
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.kev {
+  color: var(--sev-critical);
+}

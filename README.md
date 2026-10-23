@@ -51,7 +51,7 @@ popup (React) ──port──▶ service worker ──executeScript──▶ p�
 
 | Pasta | Conteúdo |
 |---|---|
-| `src/fingerprinting/` | Formato de assinatura (`signature.ts`), motor (`engine.ts`), seleção de versão, 140 assinaturas em `signatures/` |
+| `src/fingerprinting/` | Formato de assinatura (`signature.ts`), motor (`engine.ts`), seleção de versão, 140 assinaturas em `signatures/`, conjunto ativo (`registry.ts`) e conversor/download da base Wappalyzer (`wappalyzer/`) |
 | `src/cve/` | Comparação de versões, parser de CPE e avaliação de configurações NVD, cliente NVD, cliente OSV, calculadora CVSS v3, throttle/retry HTTP, correlação |
 | `src/content/` | Coletor injetado sob demanda e sondas serializadas (MAIN world, headers) |
 | `src/background/` | Service worker: coordenação, streaming de progresso, badge, páginas não suportadas |
@@ -82,7 +82,29 @@ Edite o arquivo adequado em `src/fingerprinting/signatures/`:
 }
 ```
 
-Tipos de regra: `html`, `scriptSrc`, `script` (inline), `stylesheet`, `meta`, `headers`, `cookies` (por nome), `globals` (caminho pontuado; `prefixo*` para chaves dinâmicas), `dom` (seletor, atributo, texto ou expando no MAIN world), `url` e `resource`. Cada regra tem confiança de 0 a 100, e a confiança da tecnologia é a soma por regra, limitada a 100. Uma regra com confiança 0 (`versionOnly`) só fornece versão e nunca detecta sozinha. `implies` gera tecnologias **inferidas**, sem versão e marcadas como não observadas. `excludes` remove outra detecção apenas quando toda a evidência dela também está explicada por esta. `tests/signatures.test.ts` valida automaticamente todas as assinaturas.
+Tipos de regra: `html`, `scriptSrc`, `script` (inline), `stylesheet`, `meta`, `headers`, `cookies` (por nome), `globals` (caminho pontuado; `prefixo*` para chaves dinâmicas), `dom` (seletor, atributo, texto ou expando no MAIN world), `url` e `resource`. Cada regra tem confiança de 0 a 100, e a confiança da tecnologia é a soma por regra, limitada a 100. Uma regra com confiança 0 (`versionOnly`) só fornece versão e nunca detecta sozinha. `implies` gera tecnologias **inferidas**, sem versão e marcadas como não observadas. `excludes` remove outra detecção apenas quando toda a evidência dela também está explicada por esta. `requires`/`requiresCategories` descartam a detecção quando nada do que ela exige está presente (detectado ou inferido). `tests/signatures.test.ts` valida automaticamente todas as assinaturas.
+
+### Base comunitária Wappalyzer (opcional)
+
+Em **Opções → Base de assinaturas Wappalyzer**, a extensão baixa o dataset
+[enthec/webappanalyzer](https://github.com/enthec/webappanalyzer) e amplia a detecção de 140 para
+cerca de 7.650 tecnologias (7.510 assinaturas comunitárias + as curadas).
+
+- **Licença:** o dataset é **GPL-3.0** e, por isso, **não acompanha** a extensão (MIT). Ele só é
+  baixado quando você pede e fica apenas neste navegador (IndexedDB). Remover a base restaura o conjunto curado.
+- **Integridade:** os 27 arquivos vêm de um commit fixado (`WAPPALYZER_COMMIT`) e cada um é
+  conferido contra um SHA-256 fixado no código. Qualquer divergência, falha HTTP ou JSON inválido
+  aborta a instalação sem gravar nada.
+- **Precedência:** as assinaturas curadas sempre vencem. As 137 entradas do dataset que duplicam
+  uma tecnologia curada são descartadas, e as referências a elas (`implies`, `requires`,
+  `excludes`) passam a apontar para a curada.
+- **Proveniência e confiança:** detecções da base aparecem com o selo **WA**, com a fonte no detalhe
+  e `source` no JSON/Markdown exportado. Cada regra comunitária contribui com 80% da confiança declarada.
+- **Conversão** (`src/fingerprinting/wappalyzer/convert.ts`): `html`, `scriptSrc`, `scripts`
+  (inline), `meta`, `headers`, `cookies` (só o nome), `js` (globais), `dom` (presença, atributo,
+  texto e propriedade), `url` e `xhr` (recursos). Versões `\1` e condicionais `\1?a:b` são
+  preservadas. `dns`, `certIssuer`, `robots`, `css` e `probe` não são observáveis aqui; as cerca de
+  200 tecnologias que só têm essas regras entram apenas por inferência.
 
 ## Fontes de dados
 
@@ -95,13 +117,91 @@ Tipos de regra: `html`, `scriptSrc`, `script` (inline), `stylesheet`, `meta`, `h
 
 **Cache:** só respostas bem-sucedidas são guardadas (TTL configurável de 1 h a 7 dias, padrão 24 h, até 400 consultas). Falhas nunca são cacheadas nem convertidas em resultado vazio. A interface mostra o erro e oferece **Tentar novamente**.
 
-**O que é enviado para fora:** apenas `fornecedor:produto:versão` (NVD) ou `pacote@versão` (OSV). URL, HTML, cookies e headers da página nunca saem do navegador.
+### Inteligência de exploração e prioridade
+
+| Fonte | Uso | Observações |
+|---|---|---|
+| [CISA KEV](https://www.cisa.gov/known-exploited-vulnerabilities-catalog) | CVEs com exploração ativa confirmada | Catálogo oficial inteiro (~1,8 MB) baixado de `www.cisa.gov`, reduzido aos campos exibidos e guardado no IndexedDB por 24 h. Consultas são locais. Se a atualização falhar, uma cópia anterior só é usada **com aviso** e a versão do catálogo; sem cópia, o KEV aparece como "não verificado". |
+| [FIRST EPSS](https://www.first.org/epss/) | Probabilidade de exploração em 30 dias | Consulta em lote (até 100 CVEs por requisição). CVE sem score publicado aparece como "sem score", nunca como 0%. Percentuais são truncados, nunca arredondados para cima. |
+
+Cada vulnerabilidade distingue três estados por fonte: **listada/pontuada**, **verificada sem
+registro** e **não verificada** (fonte indisponível). Uma falha nunca vira "não listada".
+
+**Prioridade:** 1) CISA KEV; 2) faixa EPSS alta (≥ 10%) e média (≥ 1%); 3) CVSS e severidade;
+4) score EPSS exato. A faixa de EPSS vem antes do CVSS porque diferenças pequenas de EPSS são
+ruído, mas uma CVE realmente provável de ser explorada não deve ficar abaixo de um 9,8 teórico.
+
+**O que é enviado para fora:** apenas `fornecedor:produto:versão` (NVD), `pacote@versão` (OSV) e IDs de CVE (EPSS). URL, HTML, cookies e headers da página nunca saem do navegador. A instalação opcional da base Wappalyzer faz GETs sem credenciais a `raw.githubusercontent.com`, sem enviar nada sobre os alvos.
 
 ### Potencial × confirmada
 
 - **Potencial:** a versão observada está dentro de um intervalo afetado segundo a fonte citada. Isso **não** significa que a aplicação seja explorável, porque configuração, backports e mitigações não são verificáveis passivamente. Quando o banner indica pacote de distribuição (ex.: `nginx/1.18.0 (Ubuntu)`), o risco de backport é sinalizado.
 - **Confirmada:** marcação manual do analista após verificação, salva por domínio e incluída nas exportações.
 - Tecnologias sem versão, com versão imprecisa (ex.: `Drupal 10`), com versões conflitantes ou apenas inferidas **não são correlacionadas**. A aba Vulnerabilidades mostra essa cobertura.
+
+## Varredura do site (crawling autorizado)
+
+Além da análise passiva de uma aba, o ícone **Varredura do site** (radar) abre o modo de
+reconhecimento de **site inteiro**:
+
+- Você define a **URL inicial**, uma **declaração de autorização obrigatória**, o teto de
+  páginas, a profundidade, a taxa (req/s) e se inclui subdomínios.
+- Ao iniciar, a extensão pede **permissão de acesso aos domínios do escopo** (concedida sob
+  demanda; o acesso amplo fica em `optional_host_permissions`, não no `host_permissions`).
+- O crawler percorre o site **na sua sessão logada** (`fetch` com `credentials: 'include'`),
+  então alcança áreas autenticadas. Cada página é lida num **offscreen document** (único lugar
+  da extensão com `fetch` + `DOMParser`), e o fingerprint é **agregado por todo o site**.
+- Como o crawl usa `fetch`, ele obtém os **headers de resposta de cada página** — algo que a
+  análise passiva de uma aba não tem. Em troca, não executa JavaScript, então detecções que
+  dependem de variáveis globais em runtime só aparecem na análise da aba ativa.
+
+**Guard-rails (no código, testados):** só segue links **GET idempotentes**; recusa
+logout/signout, delete/remove, `?action=`, `?_wpnonce`/`token`, downloads e `mailto:`/`tel:`;
+nunca submete formulários; nunca repete uma URL; respeita rate limit por host e concorrência;
+os limites são *clampados* a faixas seguras. Uma sessão não inicia sem autorização registrada.
+
+**CVE em escala:** terminado o crawl, cada tecnologia do inventário agregado é correlacionada
+**uma vez para o site inteiro** (não uma por página), com o mesmo cache e os mesmos limites de
+taxa da análise de página. Só entram tecnologias com mapeamento e versão exata observada; as
+demais ficam registradas com o motivo. As vulnerabilidades são **deduplicadas entre
+tecnologias** (a mesma CVE via dois produtos, ou um advisory e sua CVE, aparece uma vez, com
+todas as tecnologias afetadas), enriquecidas com KEV + EPSS e ordenadas por prioridade. Falhas
+de consulta aparecem por tecnologia; nada é presumido. Interromper a varredura nessa fase
+mantém o que já foi consultado e marca o resultado como parcial. Com "Consultar
+vulnerabilidades" desligado, o scan não faz nenhuma consulta.
+
+**Configuração (passiva):** durante o crawl, cada página HTML obtida é examinada a partir da
+resposta que o crawler **já recebeu**, sem nenhuma requisição adicional (um e2e garante que só
+são requisitadas páginas linkadas pelo site e os recursos que elas referenciam). Checagens:
+página sem HTTPS; HSTS ausente ou fraco; CSP ausente ou permissiva (header ou meta);
+`X-Content-Type-Options` ausente; falta de proteção contra framing (X-Frame-Options ou
+`frame-ancestors` em header); versão divulgada em `Server`/`X-Powered-By`; CORS `*` (e `*` com
+credenciais); conteúdo misto (scripts e CSS via HTTP em página HTTPS); scripts de terceiros sem
+SRI. Os achados são agregados por site, com o número de páginas afetadas e exemplos (URLs
+redigidas). Atributos de cookies (Secure, HttpOnly, SameSite) **não** são verificados no scan,
+porque o navegador não expõe `Set-Cookie` a extensões. Não há busca por arquivos ou caminhos
+sensíveis: o scan não requisita nada que o próprio site não linke.
+
+Sessões, inventário, vulnerabilidades e achados de configuração ficam em **IndexedDB**, no perfil do navegador.
+
+### Painel e export da varredura
+
+**Abrir painel**, no card de cada varredura, abre `dashboard.html` numa aba cheia. O painel
+mostra a sessão (escopo, autorização registrada, status ao vivo), os indicadores e as abas:
+- **Vulnerabilidades:** lista completa priorizada, com busca, filtros de severidade e de
+  tecnologia, "Somente CISA KEV" e detalhe expansível (KEV, EPSS, faixas afetadas, referências);
+- **Configuração**, **Tecnologias**, **Páginas** e **Hosts**.
+
+Exports, todos gerados localmente a partir dos dados da sessão:
+
+| Formato | Conteúdo |
+|---|---|
+| Relatório HTML | Arquivo único e estático: sem nenhum script, com CSP `default-src 'none'`, todo texto escapado e só links `http(s)`. Pode ser aberto e compartilhado com segurança. Segue o tema claro/escuro do sistema. |
+| Markdown | Relatório com resumo, vulnerabilidades priorizadas, falhas de consulta, configuração, tecnologias e páginas |
+| JSON | `techrecon.scan-report/v1`, completo (inclui `kev`/`epss` com os estados `null` e ausente) |
+| CSV | Uma tabela por arquivo (vulnerabilidades, tecnologias, configuração, páginas), UTF-8 com BOM. Células que começam com `= + - @` são neutralizadas contra injeção de fórmulas em planilhas. |
+
+Em todos os formatos, URLs passam pela mesma redação de tokens e sessões usada no resto da extensão.
 
 ## Permissões
 
@@ -110,9 +210,12 @@ Tipos de regra: `html`, `scriptSrc`, `script` (inline), `stylesheet`, `meta`, `h
 | `activeTab` | Acesso temporário apenas à aba em que você clicou no ícone. Sem acesso a outras abas nem ao histórico. |
 | `scripting` | Injetar o coletor e as sondas sob demanda, sem content script permanente |
 | `storage` | Opções, cache de CVEs, confirmações e resultado da última análise por aba (session) |
-| `host_permissions`: `services.nvd.nist.gov`, `api.osv.dev` | Consultar as APIs de vulnerabilidade a partir do service worker (CORS) |
+| `offscreen` | Documento offscreen que faz fetch + parse das páginas durante a varredura |
+| `host_permissions`: `services.nvd.nist.gov`, `api.osv.dev`, `www.cisa.gov` | Consultar as APIs de vulnerabilidade e baixar o catálogo KEV a partir do service worker (o feed da CISA não envia CORS). O EPSS (`api.first.org`) envia CORS aberto e não precisa de permissão. |
+| `optional_host_permissions`: `http(s)://*/*` | **Não concedida por padrão.** Pedida em runtime, só para os domínios do escopo, no início de cada varredura. |
 
-Não há `tabs`, `webRequest`, `cookies`, `<all_urls>` nem content scripts declarados.
+Não há `tabs`, `webRequest`, `cookies` nem content scripts declarados. O acesso amplo a hosts é
+opcional e só é concedido quando você autoriza uma varredura.
 
 ## Limitações conhecidas
 

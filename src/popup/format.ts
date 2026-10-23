@@ -53,7 +53,9 @@ export function formatTime(iso?: string): string {
 
 export function formatDate(iso?: string): string {
   if (!iso) return '';
-  const d = new Date(iso);
+  // A bare date ("2025-01-23") is a calendar day, not UTC midnight: parse it as local time so it
+  // does not show as the previous day west of UTC.
+  const d = new Date(/^\d{4}-\d{2}-\d{2}$/.test(iso) ? `${iso}T00:00:00` : iso);
   return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString('pt-BR');
 }
 

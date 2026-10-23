@@ -1,0 +1,314 @@
+import { ArrowLeft, CircleStop, Globe2, LayoutDashboard, Loader2, Play, Trash2 } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { CATEGORY_LABELS } from '../../fingerprinting/signature';
+import type { MisconfigRecord, ScanSession } from '../../scan/types';
+import { SEVERITY_LABEL, SEVERITY_VAR } from '../format';
+import { useScan, type Inventory } from '../useScan';
+import { EnrichmentNote, ExploitBadges, PRIORITY_HELP } from './Exploit';
+import styles from './ScanView.module.css';
+import ui from './ui.module.css';
+
+const RUNNING = new Set(['running', 'authorized']);
+
+function statusLabel(session: ScanSession): string {
+  if (session.status === 'running' && session.cve?.status === 'running') return `correlacionando CVEs ${session.cve.done}/${session.cve.eligible}`;
+  return { draft: 'rascunho', authorized: 'autorizado', running: 'varrendo', paused: 'pausado', done: 'concluído', aborted: 'interrompido', error: 'erro' }[session.status];
+}
+
+function NewScan({ onStart, defaultSeed, error }: { onStart: ReturnType<typeof useScan>['startScan']; defaultSeed: string; error: string | null }) {
+  const [seed, setSeed] = useState(defaultSeed);
+  const [statement, setStatement] = useState('');
+  const [followSub, setFollowSub] = useState(false);
+  const [maxPages, setMaxPages] = useState(100);
+  const [depth, setDepth] = useState(3);
+  const [rps, setRps] = useState(2);
+  const [busy, setBusy] = useState(false);
+
+  const host = useMemo(() => {
+    try {
+      return new URL(seed).hostname;
+    } catch {
+      return '';
+    }
+  }, [seed]);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    const includeHosts = followSub && host ? [{ pattern: `*.${host}` }] : host ? [{ pattern: host }] : [];
+    await onStart(host || 'Scan', [seed], { includeHosts, followSubdomains: followSub, maxPages, maxDepth: depth, requestsPerSecond: rps }, statement);
+    setBusy(false);
+  };
+
+  return (
+    <form className={styles.form} onSubmit={submit}>
+      <label className={styles.field}>
+        <span>URL inicial</span>
+        <input type="url" required value={seed} onChange={(e) => setSeed(e.target.value)} placeholder="https://exemplo.com/" />
+      </label>
+      <label className={styles.field}>
+        <span>Autorização (obrigatória)</span>
+        <input type="text" required value={statement} onChange={(e) => setStatement(e.target.value)} placeholder="Ex.: Pentest ACME-2026, cliente autorizou por escrito" />
+      </label>
+      <p className={styles.consent}>
+        Declaro que estou autorizado a varrer {host || 'este alvo'}. A extensão fará requisições GET reais ao site, na sua sessão, dentro do escopo.
+      </p>
+      <div className={styles.row3}>
+        <label className={styles.field}>
+          <span>Páginas</span>
+          <input type="number" min={1} max={5000} value={maxPages} onChange={(e) => setMaxPages(Number(e.target.value))} />
+        </label>
+        <label className={styles.field}>
+          <span>Profundidade</span>
+          <input type="number" min={0} max={12} value={depth} onChange={(e) => setDepth(Number(e.target.value))} />
+        </label>
+        <label className={styles.field}>
+          <span>Req/s</span>
+          <input type="number" min={0.2} max={20} step={0.2} value={rps} onChange={(e) => setRps(Number(e.target.value))} />
+        </label>
+      </div>
+      <label className={styles.checkbox}>
+        <input type="checkbox" checked={followSub} onChange={(e) => setFollowSub(e.target.checked)} />
+        Incluir subdomínios de {host || 'o host'}
+      </label>
+      {error && <p className={styles.error}>{error}</p>}
+      <button type="submit" className={ui.buttonPrimary} disabled={busy || !host}>
+        {busy ? <Loader2 size={14} className={styles.spin} /> : <Play size={14} />} Autorizar e iniciar varredura
+      </button>
+    </form>
+  );
+}
+
+function SessionCard({ session, inventory, onOpen, onAbort, onDelete, open }: {
+  session: ScanSession;
+  inventory?: Inventory;
+  onOpen: () => void;
+  onAbort: () => void;
+  onDelete: () => void;
+  open: boolean;
+}) {
+  const running = session.status === 'running';
+  const cve = session.cve?.status === 'running' ? session.cve : null;
+  const pct = cve
+    ? Math.round((cve.done / Math.max(1, cve.eligible)) * 100)
+    : session.scope.maxPages
+      ? Math.min(100, Math.round((session.counters.fetched / session.scope.maxPages) * 100))
+      : 0;
+  return (
+    <div className={styles.card}>
+      <button type="button" className={styles.cardHead} onClick={onOpen} aria-expanded={open}>
+        <Globe2 size={14} />
+        <span className={styles.cardTitle}>
+          {session.label}
+          <small>
+            {statusLabel(session)} · {session.counters.fetched} págs · {session.counters.technologies} techs
+            {session.cve && session.cve.status !== 'disabled' && session.cve.status !== 'running' ? ` · ${session.counters.vulnerabilities} CVEs` : ''}
+            {session.counters.exploited ? <strong className={styles.kev}> · {session.counters.exploited} KEV</strong> : null}
+            {session.misconfig ? ` · ${session.counters.misconfigurations} config.` : ''}
+          </small>
+        </span>
+        {running ? <Loader2 size={14} className={styles.spin} /> : null}
+      </button>
+      {running && (
+        <div className={styles.progress} role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}>
+          <span style={{ width: `${pct}%` }} />
+        </div>
+      )}
+      <div className={styles.cardActions}>
+        {running ? (
+          <button type="button" className={ui.button} onClick={onAbort}>
+            <CircleStop size={13} /> Interromper
+          </button>
+        ) : (
+          <button type="button" className={ui.button} onClick={onDelete}>
+            <Trash2 size={13} /> Excluir
+          </button>
+        )}
+        <button type="button" className={ui.button} onClick={() => void chrome.tabs.create({ url: chrome.runtime.getURL(`dashboard.html?session=${encodeURIComponent(session.id)}`) })}>
+          <LayoutDashboard size={13} /> Abrir painel
+        </button>
+        {session.error && <span className={styles.error}>{session.error}</span>}
+      </div>
+      {open && inventory && <InventoryView inventory={inventory} session={session} />}
+    </div>
+  );
+}
+
+const VULN_LIMIT = 40;
+
+function ScanVulns({ inventory, session }: { inventory: Inventory; session: ScanSession }) {
+  const cve = session.cve;
+  if (!cve) return null;
+  if (cve.status === 'disabled') {
+    return <p className={styles.invMeta}>Correlação de CVEs desativada nas opções; o inventário não foi consultado.</p>;
+  }
+  const by = (status: string) => inventory.techCve.filter((r) => r.status === status);
+  const failed = by('error');
+  const partial = inventory.techCve.filter((r) => r.status === 'ok' && r.message);
+  const skipped = by('no-version').length + by('version-uncertain').length;
+  const unmapped = by('unmapped').length;
+  const list = inventory.vulnerabilities;
+  return (
+    <section className={styles.vulns} aria-label="Vulnerabilidades do site">
+      <h4>
+        Vulnerabilidades priorizadas <span>{list.length}</span>
+      </h4>
+      <p className={styles.invMeta}>
+        {cve.status === 'running' ? `Consultando ${cve.done}/${cve.eligible}… ` : ''}
+        {cve.eligible} de {cve.total} tecnologias com versão exata consultadas
+        {skipped ? ` · ${skipped} sem versão exata` : ''}
+        {unmapped ? ` · ${unmapped} sem fonte de CVE` : ''}
+        {cve.status === 'aborted' ? ' · interrompida (resultado parcial)' : ''}
+      </p>
+      {(failed.length > 0 || partial.length > 0) && (
+        <p className={styles.error} role="alert">
+          Consultas com falha (nenhum resultado presumido): {[...failed, ...partial].map((r) => `${r.techName} ${r.version ?? ''}`.trim()).join(', ')}
+        </p>
+      )}
+      <EnrichmentNote status={cve.enrichment} />
+      {list.length > 1 && <p className={styles.invMeta}>{PRIORITY_HELP}</p>}
+      <ul className={styles.invList} aria-label="Vulnerabilidades priorizadas">
+        {list.slice(0, VULN_LIMIT).map(({ vuln, techs }) => (
+          <li key={vuln.id}>
+            <span className={styles.invName}>
+              <span className="mono">{vuln.id}</span>
+              <span className={`${styles.invVer} mono`} style={{ color: SEVERITY_VAR[vuln.severity] }}>
+                {vuln.cvss?.score != null ? vuln.cvss.score.toFixed(1) : SEVERITY_LABEL[vuln.severity]}
+              </span>
+              <ExploitBadges vuln={vuln} />
+            </span>
+            <span className={styles.invCat}>
+              {techs.map((t) => `${t.name} ${t.version ?? ''}`.trim()).join(', ')}
+              {vuln.fixedIn ? ` · corrigida em ${vuln.fixedIn}` : ''}
+            </span>
+          </li>
+        ))}
+      </ul>
+      {list.length > VULN_LIMIT && <p className={styles.invMeta}>+{list.length - VULN_LIMIT} de menor prioridade não exibidas aqui.</p>}
+      {list.length === 0 && cve.status === 'done' && !failed.length && (
+        <p className={styles.invMeta}>Nenhuma vulnerabilidade cuja faixa afetada contenha uma versão observada.</p>
+      )}
+    </section>
+  );
+}
+
+const MISCONFIG_SEVERITY: Record<MisconfigRecord['severity'], { label: string; color: string }> = {
+  high: { label: 'Alta', color: 'var(--sev-high)' },
+  medium: { label: 'Média', color: 'var(--sev-medium)' },
+  low: { label: 'Baixa', color: 'var(--sev-low)' },
+  info: { label: 'Info', color: 'var(--muted)' },
+};
+
+function ScanMisconfig({ inventory, session }: { inventory: Inventory; session: ScanSession }) {
+  const checked = session.misconfig?.checkedPages;
+  if (checked === undefined) return null;
+  const list = inventory.misconfigurations;
+  return (
+    <section className={styles.vulns} aria-label="Configuração do site">
+      <h4>
+        Configuração (passiva) <span>{list.length}</span>
+      </h4>
+      <p className={styles.invMeta}>
+        {checked} página(s) HTML examinada(s) a partir das respostas já obtidas pelo crawl, sem requisições extras. Atributos de cookies não são observáveis (o navegador oculta Set-Cookie).
+      </p>
+      <ul className={styles.invList} aria-label="Achados de configuração">
+        {list.map((f) => (
+          <li key={f.key}>
+            <span className={styles.invName}>
+              <span className={ui.chip} style={{ borderColor: MISCONFIG_SEVERITY[f.severity].color, color: MISCONFIG_SEVERITY[f.severity].color }}>
+                {MISCONFIG_SEVERITY[f.severity].label}
+              </span>
+              <span>{f.title}</span>
+            </span>
+            <span className={styles.invCat}>
+              {f.detail} · {f.pageCount} de {checked} pág.
+            </span>
+            {f.evidence && <span className={`${styles.invCat} mono`}>{f.evidence}</span>}
+          </li>
+        ))}
+      </ul>
+      {list.length === 0 && <p className={styles.invMeta}>Nenhum problema de configuração observado.</p>}
+    </section>
+  );
+}
+
+function InventoryView({ inventory, session }: { inventory: Inventory; session: ScanSession }) {
+  const observed = inventory.technologies.filter((t) => !t.inferred);
+  return (
+    <div className={styles.inventory}>
+      <p className={styles.invMeta}>
+        {inventory.pages.length} páginas varridas · {observed.length} tecnologias observadas · {inventory.assets.filter((a) => a.thirdParty).length} hosts de terceiros
+      </p>
+      <ScanVulns inventory={inventory} session={session} />
+      <ScanMisconfig inventory={inventory} session={session} />
+      <ul className={styles.invList} aria-label="Tecnologias do site">
+        {inventory.technologies.slice(0, 60).map((t) => (
+          <li key={t.id}>
+            <span className={styles.invName}>
+              <span>{t.name}</span>
+              {t.version && <span className={`${styles.invVer} mono`}>{t.version}</span>}
+              {t.inferred && <span className={ui.chip}>inferida</span>}
+              {t.source === 'wappalyzer' && (
+                <span className={ui.chip} title="Detectada pela base comunitária Wappalyzer">
+                  WA
+                </span>
+              )}
+            </span>
+            <span className={styles.invCat}>
+              {t.categories.map((c) => CATEGORY_LABELS[c]).join(', ')} · {t.pageCount} pág.
+            </span>
+          </li>
+        ))}
+      </ul>
+      {inventory.technologies.length === 0 && <p className={styles.invMeta}>Nenhuma tecnologia agregada ainda.</p>}
+    </div>
+  );
+}
+
+export function ScanView({ onBack, defaultSeed }: { onBack: () => void; defaultSeed: string }) {
+  const { sessions, inventories, error, startScan, abortScan, deleteScan, loadInventory } = useScan();
+  const [openId, setOpenId] = useState<string | null>(null);
+
+  const toggle = (id: string) => {
+    const next = openId === id ? null : id;
+    setOpenId(next);
+    if (next) loadInventory(next);
+  };
+
+  return (
+    <div className={ui.scroll}>
+      <div className={styles.head}>
+        <button type="button" className={ui.button} onClick={onBack}>
+          <ArrowLeft size={13} /> Voltar
+        </button>
+        <h2>Varredura do site</h2>
+      </div>
+      <p className={styles.intro}>
+        Varre o site inteiro no escopo autorizado — na sua sessão logada — e agrega tecnologias e versões de todas as páginas. Requer autorização explícita e permissão de acesso aos domínios.
+      </p>
+      <section className={styles.section}>
+        <h3>Nova varredura</h3>
+        <NewScan onStart={startScan} defaultSeed={defaultSeed} error={error} />
+      </section>
+      {sessions.length > 0 && (
+        <section className={styles.section}>
+          <h3>Varreduras ({sessions.length})</h3>
+          {sessions.map((s) => (
+            <SessionCard
+              key={s.id}
+              session={s}
+              inventory={inventories[s.id]}
+              open={openId === s.id}
+              onOpen={() => toggle(s.id)}
+              onAbort={() => abortScan(s.id)}
+              onDelete={() => deleteScan(s.id)}
+            />
+          ))}
+        </section>
+      )}
+      {sessions.some((s) => RUNNING.has(s.status)) && (
+        <p className={styles.intro}>Mantenha o popup aberto durante a varredura; fechá-lo não cancela, mas pausa a atualização ao vivo.</p>
+      )}
+    </div>
+  );
+}

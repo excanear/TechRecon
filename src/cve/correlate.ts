@@ -4,6 +4,9 @@ import { Throttle, type FetchLike, type Sleep } from './http';
 import { fetchNvd, normalizeNvdResponse } from './nvd';
 import { fetchOsv, normalizeOsvResponse } from './osv';
 
+/** What correlation needs from a detection; a site-wide aggregated technology satisfies it too. */
+export type CorrelatableTech = Pick<Detection, 'id' | 'name' | 'version' | 'versionExact' | 'versionConflicts' | 'inferred' | 'cpe' | 'npm' | 'distroPackage'>;
+
 /** Cached result of one source query (already verified against the version). */
 export interface CachedQuery {
   storedAt: number;
@@ -47,7 +50,7 @@ interface PlannedQuery {
  * Decides whether a detection can be correlated at all. Correlation by product name alone is
  * never performed: an exact, unambiguous, directly observed version is required.
  */
-export function correlationPrecheck(det: Detection): Pick<TechVulnReport, 'status' | 'message'> | null {
+export function correlationPrecheck(det: CorrelatableTech): Pick<TechVulnReport, 'status' | 'message'> | null {
   if (!det.cpe?.length && !det.npm) {
     return { status: 'unmapped', message: 'Sem mapeamento CPE/pacote para esta tecnologia; nenhuma fonte consultada.' };
   }
@@ -69,7 +72,7 @@ export function correlationPrecheck(det: Detection): Pick<TechVulnReport, 'statu
   return null;
 }
 
-function planQueries(det: Detection, ctx: CorrelationContext): PlannedQuery[] {
+function planQueries(det: CorrelatableTech, ctx: CorrelationContext): PlannedQuery[] {
   const version = det.version!;
   if (det.npm) {
     const pkg = det.npm;
@@ -121,7 +124,7 @@ function mergeVulns(lists: Vulnerability[][]): Vulnerability[] {
   );
 }
 
-export async function correlateDetection(det: Detection, ctx: CorrelationContext): Promise<TechVulnReport> {
+export async function correlateDetection(det: CorrelatableTech, ctx: CorrelationContext): Promise<TechVulnReport> {
   const base = { techId: det.id, techName: det.name, version: det.version };
   const blocked = correlationPrecheck(det);
   if (blocked) return { ...base, ...blocked, queries: [], vulns: [] };

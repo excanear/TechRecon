@@ -18,8 +18,15 @@ function manifestPlugin() {
       const pkg = JSON.parse(readFileSync(resolve(here, 'package.json'), 'utf8'));
       manifest.version = pkg.version;
       if (process.env.TECHRECON_E2E === '1') {
-        // Automated tests cannot click the toolbar icon to grant activeTab.
-        manifest.host_permissions = [...(manifest.host_permissions ?? []), 'http://127.0.0.1/*', 'http://localhost/*'];
+        // Automated tests cannot click the toolbar icon (activeTab) nor resolve a host-permission
+        // prompt, so the local test origins are pre-granted for both schemes.
+        manifest.host_permissions = [
+          ...(manifest.host_permissions ?? []),
+          'http://127.0.0.1/*',
+          'https://127.0.0.1/*',
+          'http://localhost/*',
+          'https://localhost/*',
+        ];
       }
       writeFileSync(resolve(outDir, 'manifest.json'), JSON.stringify(manifest, null, 2));
     },
@@ -40,10 +47,13 @@ export default defineConfig({
     rollupOptions: {
       input: {
         popup: resolve(root, 'popup.html'),
+        dashboard: resolve(root, 'dashboard.html'),
         background: resolve(here, 'src/background/index.ts'),
+        offscreen: resolve(here, 'src/offscreen/offscreen.ts'),
       },
       output: {
-        entryFileNames: (chunk) => (chunk.name === 'background' ? 'background.js' : 'assets/[name]-[hash].js'),
+        entryFileNames: (chunk) =>
+          chunk.name === 'background' ? 'background.js' : chunk.name === 'offscreen' ? 'offscreen.js' : 'assets/[name]-[hash].js',
         chunkFileNames: 'assets/[name]-[hash].js',
         assetFileNames: 'assets/[name]-[hash][extname]',
       },

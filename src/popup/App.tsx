@@ -5,6 +5,7 @@ import type { Confirmations, Settings } from '../types';
 import { ExportMenu, type ExportAction } from './components/ExportMenu';
 import { Header, Summary, Tabs, type TabId } from './components/Header';
 import { ReconPanel } from './components/ReconPanel';
+import { ScanView } from './components/ScanView';
 import { SettingsView } from './components/SettingsView';
 import { TechList } from './components/TechList';
 import { VulnList } from './components/VulnList';
@@ -25,7 +26,7 @@ function download(filename: string, content: string, type: string) {
 
 export function App() {
   const { state, fatal, refresh, captureHeaders, retryCve } = useAnalysis();
-  const [view, setView] = useState<'main' | 'settings'>('main');
+  const [view, setView] = useState<'main' | 'settings' | 'scan'>('main');
   const [tab, setTab] = useState<TabId>('tech');
   const [techFilter, setTechFilter] = useState<string | null>(null);
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
@@ -107,6 +108,8 @@ export function App() {
   let body: React.ReactNode;
   if (view === 'settings') {
     body = <SettingsView settings={settings} onChange={changeSettings} onBack={() => setView('main')} notify={setToast} />;
+  } else if (view === 'scan') {
+    body = <ScanView onBack={() => setView('main')} defaultSeed={state?.url ?? ''} />;
   } else if (fatal) {
     body = (
       <div className={ui.empty}>
@@ -166,6 +169,7 @@ export function App() {
               onRetry={retryCve}
               busy={busy}
               lookupEnabled={state.cveLookupEnabled}
+              enrichment={state.enrichment}
             />
           )}
           {tab === 'recon' && state.recon && <ReconPanel recon={state.recon} onCaptureHeaders={captureHeaders} busy={busy} />}
@@ -181,6 +185,7 @@ export function App() {
         busy={busy && !fatal}
         onRefresh={onRefresh}
         onSettings={() => setView(view === 'settings' ? 'main' : 'settings')}
+        onScan={() => setView(view === 'scan' ? 'main' : 'scan')}
         exportMenu={<ExportMenu disabled={!ready} onAction={onExport} />}
       />
       <main className={styles.main}>{body}</main>

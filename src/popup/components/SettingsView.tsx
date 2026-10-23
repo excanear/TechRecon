@@ -1,9 +1,63 @@
-import { ArrowLeft, Eye, EyeOff, Trash2 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { ArrowLeft, Download, Eye, EyeOff, Trash2 } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import { clearCveCache, countCveCache } from '../../storage';
 import type { Settings } from '../../types';
+import { useDataset } from '../useDataset';
 import styles from './SettingsView.module.css';
 import ui from './ui.module.css';
+
+function WappalyzerSection({ notify }: { notify: (msg: string) => void }) {
+  const { status, progress, error, install, remove } = useDataset();
+  const wasInstalled = useRef<boolean | null>(null);
+
+  useEffect(() => {
+    if (!status) return;
+    if (wasInstalled.current === false && status.installed) notify(`Base Wappalyzer ativada (${status.stats?.signatures ?? 0} assinaturas)`);
+    if (wasInstalled.current === true && !status.installed) notify('Base Wappalyzer removida');
+    wasInstalled.current = status.installed;
+  }, [status, notify]);
+
+  const busy = progress !== null;
+  return (
+    <section className={styles.group}>
+      <span className={styles.label}>
+        Base de assinaturas Wappalyzer <small>opcional · {status?.license ?? 'GPL-3.0'}</small>
+      </span>
+      {status?.installed && status.stats ? (
+        <p className={styles.help}>
+          Ativa: {status.stats.signatures.toLocaleString('pt-BR')} assinaturas comunitárias somadas às {status.curated} curadas
+          ({status.stats.curatedOverlap} duplicatas cedem lugar às curadas). Commit{' '}
+          <span className="mono">{status.commit?.slice(0, 10)}</span>, baixada em {status.fetchedAt ? new Date(status.fetchedAt).toLocaleString('pt-BR') : '—'}.
+        </p>
+      ) : (
+        <p className={styles.help}>
+          Amplia a detecção de {status?.curated ?? 140} para cerca de 7.600 tecnologias. Por ser GPL-3.0, a base não acompanha a extensão: ela é baixada do{' '}
+          <a href={status?.repo ?? 'https://github.com/enthec/webappanalyzer'} target="_blank" rel="noreferrer noopener">
+            webappanalyzer
+          </a>{' '}
+          (commit fixado, integridade SHA-256 verificada) e fica só neste navegador. Detecções dessa base aparecem marcadas como WA.
+        </p>
+      )}
+      {status?.error && <p className={styles.help}>{status.error}</p>}
+      {error && (
+        <p className={styles.help} role="alert">
+          Falha: {error}
+        </p>
+      )}
+      <div className={styles.keyRow}>
+        {status?.installed ? (
+          <button type="button" className={ui.button} onClick={remove} disabled={busy}>
+            <Trash2 size={13} /> Remover base
+          </button>
+        ) : (
+          <button type="button" className={ui.buttonPrimary} onClick={install} disabled={busy || !status}>
+            <Download size={13} /> {progress ? `Baixando ${progress.done}/${progress.total}…` : 'Baixar e ativar (~3 MB)'}
+          </button>
+        )}
+      </div>
+    </section>
+  );
+}
 
 interface SettingsViewProps {
   settings: Settings;
@@ -106,6 +160,8 @@ export function SettingsView({ settings, onChange, onBack, notify }: SettingsVie
           </button>
         </div>
       </section>
+
+      <WappalyzerSection notify={notify} />
 
       <section className={styles.group}>
         <span className={styles.label}>Tema</span>
